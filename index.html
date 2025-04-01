@@ -15,8 +15,8 @@
         async function fetchPatchInfo() {
             try {
                 // 替换为你自己的 GitHub 用户名和仓库名称
-                const repoOwner = 'yourusername';
-                const repoName = 'your-repo';
+                const repoOwner = 'cleanper';
+                const repoName = 'UpdatePath';
                 const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/patch.json`;
 
                 const response = await fetch(apiUrl);
@@ -28,7 +28,6 @@
 
                 const fileListDiv = document.getElementById('file-list');
 
-                // 显示需要删除的文件
                 const deleteList = document.createElement('div');
                 deleteList.innerHTML = '<h2>需要删除的文件</h2>';
                 const deleteUl = document.createElement('ul');
@@ -40,20 +39,17 @@
                 deleteList.appendChild(deleteUl);
                 fileListDiv.appendChild(deleteList);
 
-                // 显示需要下载的文件
                 const downloadList = document.createElement('div');
                 downloadList.innerHTML = `<h2>需要下载的文件（版本 ${patchInfo.download.version}）</h2>`;
                 const downloadUl = document.createElement('ul');
                 patchInfo.download.additions.forEach(file => {
                     const li = document.createElement('li');
-                    // 直接显示文件名和下载地址
                     li.textContent = `${file.name} (${file.url})`; 
                     downloadUl.appendChild(li);
                 });
                 downloadList.appendChild(downloadUl);
                 fileListDiv.appendChild(downloadList);
 
-                // 显示需要替换的文件
                 const replaceList = document.createElement('div');
                 replaceList.innerHTML = '<h2>需要替换的文件</h2>';
                 const replaceUl = document.createElement('ul');

@@ -1,78 +1,79 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的世界整合包补丁</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #555;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
-
 <body>
     <h1>我的世界整合包补丁 1.0.7</h1>
     <div id="file-list"></div>
-
     <script>
         async function fetchPatchInfo() {
+            const repoOwner = 'cleanper';
+            const repoName = 'UpdatePath';
+            const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/patch.json`;
             try {
-                // 替换为你自己的 GitHub 用户名和仓库名称
-                const repoOwner = 'cleanper';
-                const repoName = 'UpdatePath';
-                const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/patch.json`;
-
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
                     throw new Error(`请求失败，状态码: ${response.status}`);
                 }
                 const data = await response.json();
                 const patchInfo = JSON.parse(atob(data.content));
-
                 const fileListDiv = document.getElementById('file-list');
 
-                // 显示需要删除的文件
-                const deleteList = document.createElement('div');
-                deleteList.innerHTML = '<h2>需要删除的文件</h2>';
-                const deleteUl = document.createElement('ul');
-                patchInfo.download.deletions.forEach(file => {
-                    const li = document.createElement('li');
-                    li.textContent = file;
-                    deleteUl.appendChild(li);
-                });
-                deleteList.appendChild(deleteUl);
+                const createList = (title, items, formatter) => {
+                    const listDiv = document.createElement('div');
+                    listDiv.innerHTML = `<h2>${title}</h2>`;
+                    const ul = document.createElement('ul');
+                    items.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerHTML = formatter(item);
+                        ul.appendChild(li);
+                    });
+                    listDiv.appendChild(ul);
+                    return listDiv;
+                };
+
+                const deleteList = createList('需要删除的文件', patchInfo.download.deletions, file => file);
                 fileListDiv.appendChild(deleteList);
 
-                // 显示需要下载的文件
-                const downloadList = document.createElement('div');
-                downloadList.innerHTML = `<h2>需要下载的文件（版本 ${patchInfo.download.version}）</h2>`;
-                const downloadUl = document.createElement('ul');
-                patchInfo.download.additions.forEach(file => {
-                    const li = document.createElement('li');
-                    const a = document.createElement('a');
-                    a.href = file.url;
-                    a.textContent = file.name;
-                    li.appendChild(a);
-                    downloadUl.appendChild(li);
-                });
-                downloadList.appendChild(downloadUl);
+                const downloadList = createList(`需要下载的文件（版本 ${patchInfo.download.version}）`, patchInfo.download.additions, file => `<a href="${file.url}" target="_blank">${file.name}</a>`);
                 fileListDiv.appendChild(downloadList);
 
-                // 显示需要替换的文件
-                const replaceList = document.createElement('div');
-                replaceList.innerHTML = '<h2>需要替换的文件</h2>';
-                const replaceUl = document.createElement('ul');
-                patchInfo.replace.forEach(file => {
-                    const li = document.createElement('li');
-                    li.textContent = `原文件: ${file.oldName}, 新文件: ${file.newUrl}`;
-                    replaceUl.appendChild(li);
-                });
-                replaceList.appendChild(replaceUl);
+                const replaceList = createList('需要替换的文件', patchInfo.replace, file => `原文件: ${file.oldName}, 新文件: <a href="${file.newUrl}" target="_blank">${file.newUrl}</a>`);
                 fileListDiv.appendChild(replaceList);
             } catch (error) {
                 console.error('获取补丁信息时出错:', error);
             }
         }
-
         fetchPatchInfo();
     </script>
 </body>
-
 </html>

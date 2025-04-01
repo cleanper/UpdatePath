@@ -5,90 +5,200 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的世界整合包补丁</title>
     <style>
+        /* 基础样式 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+
         .file-item {
             display: flex;
             justify-content: space-between;
-            margin: 5px 0;
-            padding: 4px;
-            background-color: #f5f5f5;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
+
         .url {
-            color: #666;
+            color: #0366d6;
+            font-size: 0.9em;
             margin-left: 15px;
+            word-break: break-all;
+            max-width: 60%;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0366d6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-box {
+            background: #ffeef0;
+            color: #cb2431;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
         }
     </style>
 </head>
 <body>
-    <h1>我的世界整合包补丁 1.0.7</h1>
-    <div id="file-list"></div>
+    <h1>我的世界整合包补丁 <span id="version"></span></h1>
+    <div id="loading" class="loader"></div>
+    <div id="file-list" style="display: none;"></div>
+    <div id="error-container"></div>
 
     <script>
-        async function fetchPatchInfo() {
-            try {
-                const repoOwner = 'cleanper'; // 请替换为自己的Github用户名在''里面
-                const repoName = 'UpdatePath'; // 请替换为自己的Github仓库名在''里面
-                const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/contents/patch.json`;
-                const response = await fetch(apiUrl);
+        const CACHE_KEY = 'patchData';
+        const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
+        const REPO_CONFIG = {
+            owner: 'cleanper',
+            repo: 'UpdatePath',
+            path: 'patch.json'
+        };
+
+        const cacheManager = {
+            get: () => {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (!cached) return null;
                 
-                if (!response.ok) throw new Error(`请求失败，状态码: ${response.status}`);
+                const { timestamp, data } = JSON.parse(cached);
+                return (Date.now() - timestamp < CACHE_TTL) ? data : null;
+            },
+            set: (data) => {
+                const cacheData = {
+                    timestamp: Date.now(),
+                    data: data
+                };
+                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+            }
+        };
+
+        async function fetchWithCache() {
+            const cachedData = cacheManager.get();
+            if (cachedData) return cachedData;
+
+            try {
+                const apiUrl = `https://api.github.com/repos/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/contents/${REPO_CONFIG.path}`;
+                const response = await fetch(apiUrl, {
+                    headers: {
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
                 
                 const data = await response.json();
-                const patchInfo = JSON.parse(atob(data.content));
-                const fileListDiv = document.getElementById('file-list');
-              
-                const deleteList = document.createElement('div');
-                deleteList.innerHTML = '<h2>需要删除的文件</h2>';
-                const deleteUl = document.createElement('ul');
+                const decoded = JSON.parse(atob(data.content));
                 
-                patchInfo.download.deletions.forEach(file => {
-                    const li = document.createElement('li');
-                    li.className = 'file-item';
-                    li.innerHTML = `<span>${file}</span>`;
-                    deleteUl.appendChild(li);
-                });
-                
-                deleteList.appendChild(deleteUl);
-                fileListDiv.appendChild(deleteList);
-
-                const downloadList = document.createElement('div');
-                downloadList.innerHTML = `<h2>需要下载的文件（版本 ${patchInfo.download.version}）</h2>`;
-                const downloadUl = document.createElement('ul');
-                
-                patchInfo.download.additions.forEach(file => {
-                    const li = document.createElement('li');
-                    li.className = 'file-item';
-                    li.innerHTML = `
-                        <a href="${file.url}" target="_blank">${file.name}</a>
-                        <span class="url">${file.url}</span>
-                    `;
-                    downloadUl.appendChild(li);
-                });
-                
-                downloadList.appendChild(downloadUl);
-                fileListDiv.appendChild(downloadList);
-
-                const replaceList = document.createElement('div');
-                replaceList.innerHTML = '<h2>需要替换的文件</h2>';
-                const replaceUl = document.createElement('ul');
-                
-                patchInfo.replace.forEach(file => {
-                    const li = document.createElement('li');
-                    li.className = 'file-item';
-                    li.innerHTML = `
-                        <span>原文件: ${file.oldName}</span>
-                        <a href="${file.newUrl}" target="_blank" class="url">${file.newUrl}</a>
-                    `;
-                    replaceUl.appendChild(li);
-                });
-                
-                replaceList.appendChild(replaceUl);
-                fileListDiv.appendChild(replaceList);
-
+                cacheManager.set(decoded);
+                if (decoded.download?.version) {
+                    document.getElementById('version').textContent = decoded.download.version;
+                }
+                return decoded;
             } catch (error) {
-                console.error('获取补丁信息时出错:', error);
+                const fallback = cacheManager.get();
+                if (fallback) {
+                    showError('连接失败，使用缓存数据', true);
+                    return fallback.data;
+                }
+                throw error;
             }
         }
-        fetchPatchInfo();
+
+        function renderUI(patchInfo) {
+            const fileListDiv = document.getElementById('file-list');
+            fileListDiv.innerHTML = '';
+
+            if (patchInfo.download?.deletions?.length) {
+                const deleteSection = createSection('需要删除的文件', 
+                    patchInfo.download.deletions.map(file => 
+                        `<li class="file-item">
+                            <span>${file}</span>
+                            <span class="url">[待删除]</span>
+                        </li>`
+                    )
+                );
+                fileListDiv.appendChild(deleteSection);
+            }
+
+            if (patchInfo.download?.additions?.length) {
+                const downloadSection = createSection(
+                    `需要下载的文件（版本 ${patchInfo.download.version}）`,
+                    patchInfo.download.additions.map(file => 
+                        `<li class="file-item">
+                            <a href="${file.url}" target="_blank">${file.name}</a>
+                            <a href="${file.url}" class="url">${file.url}</a>
+                        </li>`
+                    )
+                );
+                fileListDiv.appendChild(downloadSection);
+            }
+
+            if (patchInfo.replace?.length) {
+                const replaceSection = createSection('需要替换的文件',
+                    patchInfo.replace.map(file => 
+                        `<li class="file-item">
+                            <span>原文件: ${file.oldName}</span>
+                            <a href="${file.newUrl}" class="url">${file.newUrl}</a>
+                        </li>`
+                    )
+                );
+                fileListDiv.appendChild(replaceSection);
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            fileListDiv.style.display = 'block';
+        }
+
+        function createSection(title, items) {
+            const section = document.createElement('div');
+            section.innerHTML = `
+                <h2>${title}</h2>
+                <ul>${items.join('')}</ul>
+            `;
+            return section;
+        }
+
+        function showError(message, isWarning = false) {
+            const container = document.getElementById('error-container');
+            container.innerHTML = `
+                <div class="error-box" style="${isWarning ? 'background:#fff3d6;color:#73510d' : ''}">
+                    ${message}
+                    <button onclick="window.location.reload()" style="margin-top:10px;padding:6px 12px;background:${isWarning ? '#f9c510' : '#d73a49'};color:white;border:none;border-radius:4px;">
+                        重试
+                    </button>
+                </div>
+            `;
+        }
+
+        async function init() {
+            try {
+                const patchData = await fetchWithCache();
+                renderUI(patchData);
+            } catch (error) {
+                console.error('初始化失败:', error);
+                document.getElementById('loading').style.display = 'none';
+                showError(`数据加载失败: ${error.message}`);
+            }
+        }
+
+        init();
     </script>
 </body>
 </html>

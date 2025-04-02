@@ -6,17 +6,17 @@
     <title>整合包更新系统</title>
     <style>
         :root {
-            --primary: #2196F3;
-            --surface: #FFFFFF;
-            --error: #FF5252;
-            --success: #4CAF50;
+            --primary: #2196f3;
+            --surface: #ffffff;
+            --error: #ff5252;
+            --success: #4caf50;
             --radius: 8px;
-            --shadow: 0 3px 6px rgba(0,0,0,0.16);
+            --shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
         }
 
         body {
             font-family: 'Roboto', system-ui, sans-serif;
-            background: #F5F5F5;
+            background: #f5f5f5;
             margin: 0;
             min-height: 100vh;
             display: grid;
@@ -32,41 +32,12 @@
             margin: 2rem 0;
         }
 
-        .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .modern-btn {
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: var(--radius);
+        .version-badge {
             background: var(--primary);
             color: white;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .modern-btn:hover {
-            filter: brightness(1.1);
-            transform: translateY(-1px);
-        }
-
-        .modern-btn:active {
-            transform: translateY(0);
-        }
-
-        .error-card {
-            background: #FFEBEE;
-            border: 1px solid var(--error);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            margin-top: 1.5rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9em;
         }
 
         .update-item {
@@ -74,20 +45,16 @@
             grid-template-columns: 48px 1fr;
             gap: 1.5rem;
             padding: 1.5rem;
-            border-bottom: 1px solid #EEE;
+            border-bottom: 1px solid #eee;
             transition: background 0.2s;
         }
 
-        .update-item:hover {
-            background: #FAFAFA;
-        }
-
-        .version-badge {
-            background: var(--primary);
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.9em;
+        .error-card {
+            background: #ffebee;
+            border: 1px solid var(--error);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
         }
     </style>
 </head>
@@ -97,81 +64,55 @@
             整合包更新 
             <span class="version-badge" id="version">加载中...</span>
         </h1>
-        
-        <div id="content">
-            <!-- 骨架屏 -->
-            <div class="update-item">
-                <div class="skeleton-img"></div>
-                <div>
-                    <div class="skeleton-line" style="width:60%"></div>
-                    <div class="skeleton-line" style="width:40%"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="status-bar">
-            <span id="status">正在连接服务器...</span>
-            <div id="error-container"></div>
-        </div>
+        <div id="content"></div>
+        <div id="error-container"></div>
     </div>
 
     <script>
-        // 配置中心
-        const CONFIG = {
-            repo: 'cleanper/UpdatePath',
-            jsonFile: 'patch.json',
-            cacheTTL: 300000,
-            defaultIcon: 'https://cdn-icons-png.flaticon.com/512/732/732238.png'
-        };
-
+        // ESLint配置参考：airbnb-base + 自定义规则
         class UpdateManager {
             constructor() {
-                this.cacheKey = `patch_v2_${CONFIG.jsonFile}`;
+                this.config = {
+                    repo: 'cleanper/UpdatePath',
+                    jsonFile: 'patch.json',
+                    cacheTTL: 300000, // 5分钟缓存
+                    defaultIcon: 'https://cdn.example.com/default-icon.png'
+                };
+                this.cacheKey = `patch_cache_${this.config.jsonFile.replace('.', '_')}`;
             }
 
             async init() {
                 try {
                     const data = await this.fetchData();
                     this.render(data);
-                    this.updateStatus('就绪', 'success');
-                    document.getElementById('version').textContent = data.version;
                 } catch (error) {
                     this.handleError(error);
                 }
             }
 
             async fetchData() {
-                const cached = this.getCache();
-                if (cached) return cached;
+                const cachedData = this.getCache();
+                if (cachedData) return cachedData;
 
                 try {
                     const response = await fetch(
-                        `https://api.github.com/repos/${CONFIG.repo}/contents/${CONFIG.jsonFile}`,
-                        {
-                            headers: {
-                                Accept: 'application/vnd.github.v3+json',
-                                'Cache-Control': 'no-cache'
-                            }
-                        }
+                        `https://api.github.com/repos/${this.config.repo}/contents/${this.config.jsonFile}`
                     );
 
                     if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
+                        throw new Error(`HTTP错误 ${response.status}`);
                     }
 
-                    const { content, sha } = await response.json();
-                    const rawData = atob(content.replace(/\s/g, ''));
-                    const data = this.parseData(rawData);
-                    
-                    this.setCache(data, sha);
-                    return data;
+                    const { content } = await response.json();
+                    const rawData = atob(content);
+                    const parsedData = this.parseData(rawData);
+
+                    this.setCache(parsedData);
+                    return parsedData;
                 } catch (error) {
                     const fallback = this.getCache();
-                    if (fallback) {
-                        this.updateStatus('使用缓存数据', 'warning');
-                        return fallback;
-                    }
-                    throw new Error(`数据获取失败: ${error.message}`);
+                    if (fallback) return fallback;
+                    throw error;
                 }
             }
 
@@ -180,171 +121,156 @@
                     const data = JSON.parse(raw);
                     return {
                         version: data.version || '未知版本',
-                        deletions: data.deletions?.filter(Boolean) || [],
-                        additions: (data.additions || []).map(item => ({
-                            name: item.name || '未命名文件',
-                            url: item.url,
-                            icon: item.icon || CONFIG.defaultIcon
-                        })),
-                        replaces: (data.replaces || []).map(item => ({
-                            oldName: item.oldName,
-                            newUrl: item.newUrl,
-                            icon: item.icon || CONFIG.defaultIcon
-                        }))
+                        deletions: this.validateArray(data.deletions),
+                        additions: this.validateAdditions(data.additions),
+                        replaces: this.validateReplaces(data.replaces)
                     };
                 } catch (error) {
-                    throw new Error('JSON解析失败: ' + error.message);
+                    throw new Error(`JSON解析失败: ${error.message}`);
                 }
+            }
+
+            validateArray(items) {
+                return Array.isArray(items) ? items.filter(Boolean) : [];
+            }
+
+            validateAdditions(items) {
+                return this.validateArray(items).map((item) => ({
+                    name: item.name || '未命名文件',
+                    url: item.url,
+                    icon: item.icon || this.config.defaultIcon
+                }));
+            }
+
+            validateReplaces(items) {
+                return this.validateArray(items).map((item) => ({
+                    oldName: item.oldName,
+                    newUrl: item.newUrl,
+                    icon: item.icon || this.config.defaultIcon
+                }));
             }
 
             render(data) {
                 const fragment = document.createDocumentFragment();
 
-                if (data.deletions.length) {
-                    const section = this.createSection(
+                if (data.deletions.length > 0) {
+                    fragment.appendChild(this.buildSection(
                         '🗑️ 待删除文件',
-                        data.deletions.map(file => this.createDeleteItem(file))
-                    );
-                    fragment.appendChild(section);
+                        data.deletions.map((file) => this.buildDeleteItem(file))
+                    ));
                 }
 
-                if (data.additions.length) {
-                    const section = this.createSection(
+                if (data.additions.length > 0) {
+                    fragment.appendChild(this.buildSection(
                         '📦 新增内容',
-                        data.additions.map(item => this.createAddItem(item))
-                    );
-                    fragment.appendChild(section);
+                        data.additions.map((item) => this.buildAdditionItem(item))
+                    ));
                 }
 
-                if (data.replaces.length) {
-                    const section = this.createSection(
+                if (data.replaces.length > 0) {
+                    fragment.appendChild(this.buildSection(
                         '🔄 文件更新',
-                        data.replaces.map(item => this.createReplaceItem(item))
-                    );
-                    fragment.appendChild(section);
+                        data.replaces.map((item) => this.buildReplaceItem(item))
+                    ));
                 }
 
-                const content = document.getElementById('content');
-                content.classList.add('loaded');
-                content.replaceChildren(fragment);
+                document.getElementById('content').replaceChildren(fragment);
+                document.getElementById('version').textContent = data.version;
             }
 
-            createSection(title, items) {
+            buildSection(title, items) {
                 const section = document.createElement('div');
                 section.innerHTML = `
-                    <h2 style="margin:1.5rem 0 1rem">${title}</h2>
+                    <h2 style="margin: 1.5rem 0 1rem">${title}</h2>
                     ${items.join('')}
                 `;
                 return section;
             }
 
-            createDeleteItem(file) {
+            buildDeleteItem(file) {
                 return `
                     <div class="update-item">
-                        <img src="${CONFIG.defaultIcon}" 
-                             alt="待删除文件"
-                             class="file-icon">
+                        <img src="${this.config.defaultIcon}" 
+                             alt="默认图标"
+                             style="width:48px;height:48px;border-radius:8px;">
                         <div>
-                            <div class="file-name">${file}</div>
-                            <div class="file-type">待删除文件</div>
+                            <div style="font-weight: 500">${file}</div>
+                            <div style="color: #666; font-size: 0.9em">待删除文件</div>
                         </div>
                     </div>
                 `;
             }
 
-            createAddItem(item) {
+            buildAdditionItem(item) {
                 return `
                     <div class="update-item">
                         <img src="${item.icon}" 
-                             alt="${item.name}"
-                             class="file-icon"
-                             onerror="this.src='${CONFIG.defaultIcon}'">
+                             onerror="this.src='${this.config.defaultIcon}'"
+                             alt="${item.name} 图标"
+                             style="width:48px;height:48px;border-radius:8px;">
                         <div>
                             <a href="${item.url}" 
-                               target="_blank"
+                               target="_blank" 
                                rel="noopener noreferrer"
-                               class="file-link">
+                               style="font-weight:500;text-decoration:none;color:var(--primary)">
                                 ${item.name}
                             </a>
-                            <div class="file-host">${new URL(item.url).hostname}</div>
+                            <div style="color:#666;font-size:0.9em">
+                                ${new URL(item.url).hostname}
+                            </div>
                         </div>
                     </div>
                 `;
-            }
-
-            createReplaceItem(item) {
-                return `
-                    <div class="update-item">
-                        <img src="${item.icon}" 
-                             alt="${item.oldName}"
-                             class="file-icon"
-                             onerror="this.src='${CONFIG.defaultIcon}'">
-                        <div>
-                            <div class="file-name">${item.oldName}</div>
-                            <a href="${item.newUrl}" 
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="download-link">
-                               下载新版文件
-                            </a>
-                        </div>
-                    </div>
-                `;
-            }
-
-            updateStatus(text, type = 'info') {
-                const status = document.getElementById('status');
-                status.textContent = text;
-                status.style.color = {
-                    info: '#666',
-                    success: 'var(--success)',
-                    warning: '#FF9800',
-                    error: 'var(--error)'
-                }[type];
             }
 
             handleError(error) {
                 console.error(error);
-                
                 const container = document.getElementById('error-container');
                 container.innerHTML = `
                     <div class="error-card">
                         <h3 style="margin:0 0 1rem;color:var(--error)">⚠️ 发生错误</h3>
                         <div style="margin-bottom:1rem">${error.message}</div>
-                        <button class="modern-btn" onclick="location.reload()">
-                            <svg aria-hidden="true" style="width:20px;height:20px" viewBox="0 0 24 24">
-                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
-                            </svg>
+                        <button 
+                            onclick="window.location.reload()" 
+                            style="
+                                padding: 0.8rem 1.5rem;
+                                border: none;
+                                border-radius: var(--radius);
+                                background: var(--primary);
+                                color: white;
+                                cursor: pointer;
+                            ">
                             重新加载
                         </button>
                     </div>
                 `;
-                this.updateStatus('连接失败', 'error');
             }
 
             getCache() {
-                const cached = localStorage.getItem(this.cacheKey);
-                if (!cached) return null;
-                
                 try {
+                    const cached = localStorage.getItem(this.cacheKey);
+                    if (!cached) return null;
+
                     const { timestamp, data } = JSON.parse(cached);
-                    return Date.now() - timestamp < CONFIG.cacheTTL ? data : null;
-                } catch {
+                    return Date.now() - timestamp < this.config.cacheTTL ? data : null;
+                } catch (error) {
                     return null;
                 }
             }
 
-            setCache(data, sha) {
-                localStorage.setItem(this.cacheKey, JSON.stringify({
-                    timestamp: Date.now(),
-                    sha,
-                    data
-                }));
+            setCache(data) {
+                localStorage.setItem(
+                    this.cacheKey,
+                    JSON.stringify({
+                        timestamp: Date.now(),
+                        data
+                    })
+                );
             }
         }
 
         // 初始化系统
-        window.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', () => {
             new UpdateManager().init();
         });
     </script>

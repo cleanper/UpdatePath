@@ -2,45 +2,84 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>我的世界整合包补丁</title>
     <style>
-        /* 基础样式 */
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --error-color: #e74c3c;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px 15px 70px;
+            background: #f8f9fa;
+        }
+
+        .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f9fa;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
         }
 
         .file-item {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: 1fr auto;
             align-items: center;
+            gap: 10px;
             padding: 12px;
             margin: 8px 0;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-info {
+            min-width: 0;
+        }
+
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            object-fit: cover;
         }
 
         .url {
-            color: #0366d6;
+            color: var(--secondary-color);
             font-size: 0.9em;
-            margin-left: 15px;
             word-break: break-all;
-            max-width: 60%;
+            display: block;
+        }
+
+        #latency {
+            position: fixed;
+            left: 15px;
+            bottom: 15px;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            backdrop-filter: blur(5px);
         }
 
         .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #0366d6;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--secondary-color);
             border-radius: 50%;
             width: 30px;
             height: 30px;
             animation: spin 1s linear infinite;
-            margin: 20px auto;
+            margin: 30px auto;
         }
 
         @keyframes spin {
@@ -48,153 +87,198 @@
             100% { transform: rotate(360deg); }
         }
 
-        .error-box {
-            background: #ffeef0;
-            color: #cb2431;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 20px 0;
+        @media (max-width: 480px) {
+            .file-item {
+                grid-template-columns: 1fr;
+            }
+            
+            .file-icon {
+                justify-self: end;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>我的世界整合包补丁 <span id="version"></span></h1>
-    <div id="loading" class="loader"></div>
-    <div id="file-list" style="display: none;"></div>
-    <div id="error-container"></div>
+    <div class="container">
+        <h1>我的世界整合包补丁 <span id="version"></span></h1>
+        <div id="loading" class="loader"></div>
+        <div id="content"></div>
+    </div>
+    <div id="latency">正在连接服务器...</div>
 
     <script>
-        const CACHE_KEY = 'patchData';
-        const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
-        const REPO_CONFIG = {
-            owner: 'cleanper',
-            repo: 'UpdatePath',
-            path: 'patch.json'
+        // 配置项（只需修改此处）
+        const CONFIG = {
+            repoOwner: 'cleanper',
+            repoName: 'UpdatePath',
+            txtFile: 'patch.txt'
         };
 
-        const cacheManager = {
-            get: () => {
-                const cached = localStorage.getItem(CACHE_KEY);
-                if (!cached) return null;
-                
-                const { timestamp, data } = JSON.parse(cached);
-                return (Date.now() - timestamp < CACHE_TTL) ? data : null;
-            },
-            set: (data) => {
-                const cacheData = {
-                    timestamp: Date.now(),
-                    data: data
-                };
-                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        // 性能监控
+        const startTime = performance.now();
+
+        // TXT解析器
+        function parseTXT(content) {
+            const result = {
+                version: '',
+                deletions: [],
+                additions: [],
+                replaces: []
+            };
+
+            let currentSection = null;
+            const lines = content.split('\n');
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#')) continue;
+
+                // 检测段落切换
+                if (trimmed.endsWith('：')) {
+                    currentSection = trimmed.replace('：', '').trim();
+                    continue;
+                }
+
+                // 处理内容
+                switch(currentSection) {
+                    case '版本':
+                        result.version = trimmed.split('：')[1]?.trim() || '';
+                        break;
+                        
+                    case '删除文件':
+                        if (trimmed !== '-----') {
+                            result.deletions.push(trimmed);
+                        }
+                        break;
+                        
+                    case '下载文件':
+                        const [name, url, icon] = trimmed.split('|').map(s => s.trim());
+                        if (name && url) {
+                            result.additions.push({
+                                name,
+                                url,
+                                icon: icon || 'https://via.placeholder.com/32' // 默认图标
+                            });
+                        }
+                        break;
+                        
+                    case '替换文件':
+                        const [oldName, newUrl, replaceIcon] = trimmed.split('|').map(s => s.trim());
+                        if (oldName && newUrl) {
+                            result.replaces.push({
+                                oldName,
+                                newUrl,
+                                icon: replaceIcon || 'https://via.placeholder.com/32'
+                            });
+                        }
+                        break;
+                }
             }
-        };
+            return result;
+        }
 
-        async function fetchWithCache() {
-            const cachedData = cacheManager.get();
-            if (cachedData) return cachedData;
+        // 渲染内容
+        function render(data) {
+            let html = '';
+            
+            // 版本显示
+            if (data.version) {
+                document.getElementById('version').textContent = data.version;
+            }
 
+            // 删除列表
+            if (data.deletions.length) {
+                html += `
+                    <div class="section">
+                        <h2>需要删除的文件</h2>
+                        ${data.deletions.map(file => `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <div>${file}</div>
+                                    <span class="url">待删除文件</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // 下载列表
+            if (data.additions.length) {
+                html += `
+                    <div class="section">
+                        <h2>新增模组文件</h2>
+                        ${data.additions.map(file => `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <a href="${file.url}" target="_blank">${file.name}</a>
+                                    <span class="url">${file.url}</span>
+                                </div>
+                                <img src="${file.icon}" class="file-icon" alt="模组图标">
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // 替换列表
+            if (data.replaces.length) {
+                html += `
+                    <div class="section">
+                        <h2>需要更新的文件</h2>
+                        ${data.replaces.map(file => `
+                            <div class="file-item">
+                                <div class="file-info">
+                                    <span>原文件：${file.oldName}</span>
+                                    <a href="${file.newUrl}" class="url">${file.newUrl}</a>
+                                </div>
+                                <img src="${file.icon}" class="file-icon" alt="更新图标">
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            document.getElementById('content').innerHTML = html;
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // 获取数据
+        async function fetchData() {
             try {
-                const apiUrl = `https://api.github.com/repos/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/contents/${REPO_CONFIG.path}`;
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-
+                const apiUrl = `https://api.github.com/repos/${CONFIG.repoOwner}/${CONFIG.repoName}/contents/${CONFIG.txtFile}`;
+                const response = await fetch(apiUrl);
+                
                 if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
                 
                 const data = await response.json();
-                const decoded = JSON.parse(atob(data.content));
+                const content = atob(data.content);
+                return parseTXT(content);
                 
-                cacheManager.set(decoded);
-                if (decoded.download?.version) {
-                    document.getElementById('version').textContent = decoded.download.version;
-                }
-                return decoded;
             } catch (error) {
-                const fallback = cacheManager.get();
-                if (fallback) {
-                    showError('连接失败，使用缓存数据', true);
-                    return fallback.data;
-                }
+                console.error('数据获取失败:', error);
                 throw error;
             }
         }
 
-        function renderUI(patchInfo) {
-            const fileListDiv = document.getElementById('file-list');
-            fileListDiv.innerHTML = '';
-
-            if (patchInfo.download?.deletions?.length) {
-                const deleteSection = createSection('需要删除的文件', 
-                    patchInfo.download.deletions.map(file => 
-                        `<li class="file-item">
-                            <span>${file}</span>
-                            <span class="url">[待删除]</span>
-                        </li>`
-                    )
-                );
-                fileListDiv.appendChild(deleteSection);
-            }
-
-            if (patchInfo.download?.additions?.length) {
-                const downloadSection = createSection(
-                    `需要下载的文件（版本 ${patchInfo.download.version}）`,
-                    patchInfo.download.additions.map(file => 
-                        `<li class="file-item">
-                            <a href="${file.url}" target="_blank">${file.name}</a>
-                            <a href="${file.url}" class="url">${file.url}</a>
-                        </li>`
-                    )
-                );
-                fileListDiv.appendChild(downloadSection);
-            }
-
-            if (patchInfo.replace?.length) {
-                const replaceSection = createSection('需要替换的文件',
-                    patchInfo.replace.map(file => 
-                        `<li class="file-item">
-                            <span>原文件: ${file.oldName}</span>
-                            <a href="${file.newUrl}" class="url">${file.newUrl}</a>
-                        </li>`
-                    )
-                );
-                fileListDiv.appendChild(replaceSection);
-            }
-
-            document.getElementById('loading').style.display = 'none';
-            fileListDiv.style.display = 'block';
+        // 更新延迟显示
+        function updateLatency() {
+            const latency = performance.now() - startTime;
+            document.getElementById('latency').textContent = 
+                `延迟: ${latency.toFixed(0)}ms | 更新时间: ${new Date().toLocaleTimeString()}`;
         }
 
-        function createSection(title, items) {
-            const section = document.createElement('div');
-            section.innerHTML = `
-                <h2>${title}</h2>
-                <ul>${items.join('')}</ul>
-            `;
-            return section;
-        }
-
-        function showError(message, isWarning = false) {
-            const container = document.getElementById('error-container');
-            container.innerHTML = `
-                <div class="error-box" style="${isWarning ? 'background:#fff3d6;color:#73510d' : ''}">
-                    ${message}
-                    <button onclick="window.location.reload()" style="margin-top:10px;padding:6px 12px;background:${isWarning ? '#f9c510' : '#d73a49'};color:white;border:none;border-radius:4px;">
-                        重试
-                    </button>
-                </div>
-            `;
-        }
-
+        // 初始化
         async function init() {
             try {
-                const patchData = await fetchWithCache();
-                renderUI(patchData);
+                const data = await fetchData();
+                render(data);
+                updateLatency();
             } catch (error) {
-                console.error('初始化失败:', error);
+                document.getElementById('latency').style.backgroundColor = '#e74c3c';
+                document.getElementById('latency').textContent = '连接失败，请检查网络';
                 document.getElementById('loading').style.display = 'none';
-                showError(`数据加载失败: ${error.message}`);
+                console.error('初始化错误:', error);
             }
         }
 

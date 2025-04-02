@@ -1,20 +1,16 @@
-# 版本信息
-版本：1.0.0
+# 支持任意位置注释
+版本：2.1.0 # 版本信息可以带注释
 
-# 需要删除的旧文件
 删除文件：
 -----
-mods/旧核心mod.jar
-config/过时配置.txt
+mods/old_mod.jar
+config/outdated.cfg
 
-# 新增模组文件（格式：文件名|下载地址|图标地址）
 下载文件：
 -----
-新生物模组.jar|https://example.com/mods/new_mob.jar|https://example.com/icons/mob.png
-优化插件.zip|https://example.com/plugins/optimize.zip|https://example.com/icons/plugin.png
+NewMod.jar | https://example.com/mod.jar | https://example.com/icon.png
+TexturePack.zip | https://example.com/textures.zip # 缺少图标字段
 
-# 需要更新的文件（格式：原文件名|新文件地址|图标地址）
 替换文件：
 -----
-config/settings.cfg|https://example.com/update/config_v2.cfg|https://example.com/icons/config.png
-libs/runtime.dll|https://example.com/update/runtime_v3.dll|https://example.com/icons/dll.png
+config.yml | https://example.com/new_config.yml | icons/config.png | 额外字段会被忽略

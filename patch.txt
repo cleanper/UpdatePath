@@ -1,20 +1,13 @@
-# 版本信息 (单行)
 版本：2.0.1
 
-# 删除文件 (每行一个)
 删除文件：
 -----
-mods/old_core.jar
-config/outdated.cfg
+mods/old_mod.jar
 
-# 新增文件 (名称|链接|图标)
 下载文件：
 -----
-新生物模组.jar | https://example.com/mods/new_mob.jar | https://example.com/icons/mob.png
-材质包.zip      | https://example.com/textures.zip     | https://example.com/icons/texture.png
+NewMod.jar | https://example.com/mod.jar
 
-# 替换文件 (旧文件名|新链接|图标)
 替换文件：
 -----
-config.yml | https://example.com/config_v2.yml | https://example.com/icons/config.png
-lang/zh_cn.json | https://example.com/lang_v3.json
+config.yml | https://example.com/config_v2.yml

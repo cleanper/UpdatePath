@@ -1,21 +1,27 @@
 {
-  "version": "2.1.0",
-  "deletions": [
-    "mods/old_mod.jar",
-    "config/outdated.cfg"
-  ],
-  "additions": [
-    {
-      "name": "高清材质包",
-      "url": "https://example.com/textures.zip",
-      "icon": "https://example.com/icons/texture.png"
-    }
-  ],
-  "replaces": [
-    {
-      "oldName": "config/settings.cfg",
-      "newUrl": "https://example.com/config_v3.cfg",
-      "icon": "https://example.com/icons/config.png"
-    }
-  ]
+    "delete": ["file1.txt", "file2.txt"],
+    "download": {
+        "version": "1.0.7",
+        "additions": [
+            {
+                "name": "new_file1.zip",
+                "url": "https://github.com/yourusername/your-repo/raw/main/new_file1.zip"
+            },
+            {
+                "name": "new_file2.zip",
+                "url": "https://github.com/yourusername/your-repo/raw/main/new_file2.zip"
+            }
+        ],
+        "deletions": ["file1.txt", "file2.txt"]
+    },
+    "replace": [
+        {
+            "oldName": "old_file1.txt",
+            "newUrl": "https://github.com/yourusername/your-repo/raw/main/new_file1.txt"
+        },
+        {
+            "oldName": "old_file2.txt",
+            "newUrl": "https://github.com/yourusername/your-repo/raw/main/new_file2.txt"
+        }
+    ]
 }

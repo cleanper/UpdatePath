@@ -1,20 +1,20 @@
 {
-  "version": "2.0.1",
+  "version": "2.1.0",
   "deletions": [
-    "mods/old_core.jar",
+    "mods/old_mod.jar",
     "config/outdated.cfg"
   ],
   "additions": [
     {
-      "name": "新生物模组",
-      "url": "https://example.com/mods/new_mob.jar",
-      "icon": "https://example.com/icons/mob.png"
+      "name": "高清材质包",
+      "url": "https://example.com/textures.zip",
+      "icon": "https://example.com/icons/texture.png"
     }
   ],
   "replaces": [
     {
-      "oldName": "config.yml",
-      "newUrl": "https://example.com/config_v2.yml",
+      "oldName": "config/settings.cfg",
+      "newUrl": "https://example.com/config_v3.cfg",
       "icon": "https://example.com/icons/config.png"
     }
   ]

@@ -1,0 +1,21 @@
+{
+  "version": "2.0.1",
+  "deletions": [
+    "mods/old_core.jar",
+    "config/outdated.cfg"
+  ],
+  "additions": [
+    {
+      "name": "新生物模组",
+      "url": "https://example.com/mods/new_mob.jar",
+      "icon": "https://example.com/icons/mob.png"
+    }
+  ],
+  "replaces": [
+    {
+      "oldName": "config.yml",
+      "newUrl": "https://example.com/config_v2.yml",
+      "icon": "https://example.com/icons/config.png"
+    }
+  ]
+}

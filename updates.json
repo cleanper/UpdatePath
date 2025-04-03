@@ -13,6 +13,13 @@
           "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/PB9Kjpo3/fabric-api-0.92.5%2B1.20.1.jar",
           "destination": "mods",
           "icon": "https://cdn.modrinth.com/data/P7dR8mSH/icon.png"
+        },
+        {
+          "original": "indium-1.0.34+mc1.20.1.jar",
+          "replacement": "indium-1.0.36+mc1.20.1.jar",
+          "url": "https://cdn.modrinth.com/data/Orvt0mRa/versions/nQHYSjxO/indium-1.0.36%2Bmc1.20.1.jar",
+          "destination": "mods",
+          "icon": "https://cdn.modrinth.com/data/Orvt0mRa/13f4ab01fac350702ba20871c9f964064073a5e2_96.webp"
         }
       ]
     }

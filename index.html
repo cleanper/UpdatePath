@@ -81,10 +81,34 @@
             transform: translateY(-1px);
         }
 
+        .status-bar {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(0,0,0,0.05);
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .progress {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
         @media (max-width: 768px) {
             .file-item {
                 grid-template-columns: 40px 1fr;
-                grid-template-rows: auto auto;
+                grid-template-rows: auto auto auto;
             }
             
             .file-url {
@@ -105,52 +129,241 @@
             <i class="fas fa-spinner fa-spin"></i>
             <span>正在加载更新信息...</span>
         </div>
+        <div class="progress">
+            <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+        </div>
     </div>
     <div id="file-list"></div>
+    <div id="status" class="status-bar" style="display:none">
+        <span id="status-text">准备就绪</span>
+        <span id="latency">延迟: 计算中...</span>
+    </div>
 
     <script>
-        // 配置管理器
+        // 性能优化配置
         const CONFIG = {
-            CACHE_KEY: 'mc_patch_final',
-            CACHE_TTL: 300000, // 5分钟
+            CACHE_KEY: 'mc_patch_optimized',
+            CACHE_TTL: 300000,
             DATA_URL: 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/patch.json',
             ICON_MAP: {
                 default: 'fa-file',
                 delete: 'fa-trash',
                 download: 'fa-download',
                 replace: 'fa-exchange-alt',
-                // 文件类型图标
                 jar: 'fa-box-archive',
                 zip: 'fa-file-zipper',
                 yml: 'fa-file-code',
                 cfg: 'fa-gear'
-            }
+            },
+            PROGRESS_INTERVAL: 100 // 进度条更新间隔(ms)
         };
 
-        // 主控制器
-        class PatchManager {
+        class OptimizedPatchManager {
             static async init() {
+                this.startTime = performance.now();
+                this.updateProgress(10);
+                
                 try {
-                    const data = await this.fetchData();
-                    this.render(data);
-                    document.getElementById('loading').remove();
+                    // 并行初始化UI和加载数据
+                    await Promise.all([
+                        this.initUI(),
+                        this.loadData()
+                    ]);
+                    
+                    this.updateProgress(90);
+                    this.finalizeRender();
                 } catch (error) {
-                    this.showError(error);
+                    this.handleError(error);
+                } finally {
+                    this.updateProgress(100);
+                    this.showStatus();
                 }
             }
 
-            static async fetchData() {
+            static initUI() {
+                // 预渲染UI框架
+                this.fileList = document.getElementById('file-list');
+                this.loading = document.getElementById('loading');
+                this.status = document.getElementById('status');
+                this.statusText = document.getElementById('status-text');
+                this.latencyText = document.getElementById('latency');
+                this.updateProgress(30);
+            }
+
+            static async loadData() {
+                this.updateProgress(40);
+                const data = await this.fetchWithCache();
+                this.updateProgress(70);
+                this.render(data);
+            }
+
+            static async fetchWithCache() {
                 // 尝试读取缓存
                 const cached = this.getCache();
-                if (cached) return cached;
+                if (cached) {
+                    this.statusText.textContent = "使用缓存数据";
+                    return cached;
+                }
 
-                // 获取新数据
+                // 测量请求延迟
+                const latencyStart = performance.now();
                 const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now());
+                const latency = performance.now() - latencyStart;
+                this.recordLatency(latency);
+
                 if (!response.ok) throw new Error(`网络错误: ${response.status}`);
                 
                 const data = await response.json();
                 this.setCache(data);
+                this.statusText.textContent = "使用网络数据";
                 return data;
+            }
+
+            static recordLatency(latency) {
+                this.latency = latency;
+                this.latencyText.textContent = `延迟: ${latency.toFixed(0)}ms`;
+            }
+
+            static render(data) {
+                if (data.version) {
+                    document.getElementById('version').textContent = `v${data.version}`;
+                }
+
+                const fragment = document.createDocumentFragment();
+                
+                // 使用requestAnimationFrame分块渲染
+                const renderChunk = (items, type, start = 0) => {
+                    const chunkSize = 10; // 每批渲染10个
+                    const end = Math.min(start + chunkSize, items.length);
+                    
+                    for (let i = start; i < end; i++) {
+                        fragment.appendChild(this.createFileItem(items[i], type));
+                    }
+                    
+                    if (end < items.length) {
+                        requestAnimationFrame(() => renderChunk(items, type, end));
+                    }
+                };
+
+                if (data.delete?.length) {
+                    const section = this.createSection('🗑️ 待删除文件');
+                    fragment.appendChild(section);
+                    renderChunk(data.delete, 'delete');
+                }
+
+                if (data.download?.additions?.length) {
+                    const version = data.download.version ? ` (v${data.download.version})` : '';
+                    const section = this.createSection(`📥 下载更新 ${data.download.additions.length}个文件${version}`);
+                    fragment.appendChild(section);
+                    renderChunk(data.download.additions, 'download');
+                }
+
+                if (data.replace?.length) {
+                    const section = this.createSection('🔄 文件替换');
+                    fragment.appendChild(section);
+                    renderChunk(data.replace, 'replace');
+                }
+
+                this.fileList.appendChild(fragment);
+            }
+
+            static createSection(title) {
+                const section = document.createElement('div');
+                section.className = 'card';
+                section.innerHTML = `<h2 style="margin-top:0">${title}</h2>`;
+                return section;
+            }
+
+            static createFileItem(item, type) {
+                const element = document.createElement('div');
+                element.className = 'file-item';
+                
+                // 性能优化：使用模板字符串一次性生成
+                const { icon, path, url } = this.getItemMetadata(item, type);
+                const button = this.createActionButton(item, type, url);
+                
+                element.innerHTML = `
+                    <div class="file-icon"><i class="fas ${icon}"></i></div>
+                    <div class="file-path">${path}</div>
+                    <div class="file-url">${url ? new URL(url).hostname : '系统操作'}</div>
+                    ${button}
+                `;
+
+                return element;
+            }
+
+            static getItemMetadata(item, type) {
+                let fileExt = '', fileName = '', path = '', url = '';
+                
+                if (type === 'download') {
+                    fileName = item.name || '';
+                    fileExt = fileName.split('.').pop();
+                    path = `mods/${fileName}`;
+                    url = item.url;
+                } else if (type === 'replace') {
+                    fileName = item.oldName || '';
+                    fileExt = fileName.split('.').pop();
+                    const newFile = item.newUrl.split('/').pop();
+                    path = `${fileName} → ${newFile}`;
+                    url = item.newUrl;
+                } else {
+                    fileName = item;
+                    fileExt = fileName.split('.').pop();
+                    path = `mods/${fileName}`;
+                }
+
+                // 确定图标
+                let icon = CONFIG.ICON_MAP[type] || CONFIG.ICON_MAP.default;
+                if (fileExt && CONFIG.ICON_MAP[fileExt]) icon = CONFIG.ICON_MAP[fileExt];
+                if (item.icon) icon = item.icon;
+
+                return { icon, path, url };
+            }
+
+            static createActionButton(item, type, url) {
+                const colors = { delete: '#ef4444', download: '#3b82f6', replace: '#10b981' };
+                const icons = { delete: 'fa-trash', download: 'fa-download', replace: 'fa-rotate' };
+                const texts = { delete: '删除', download: '下载', replace: '替换' };
+                const color = item.color || colors[type];
+
+                if (type === 'delete') {
+                    return `<div class="action-btn" style="background:${color}">
+                        <i class="fas ${icons[type]}"></i>${texts[type]}
+                    </div>`;
+                }
+                
+                return `<a href="${url}" target="_blank" class="action-btn" style="background:${color}">
+                    <i class="fas ${icons[type]}"></i>${texts[type]}
+                </a>`;
+            }
+
+            static finalizeRender() {
+                this.loading.style.display = 'none';
+                this.fileList.style.display = 'block';
+            }
+
+            static showStatus() {
+                this.status.style.display = 'flex';
+                const loadTime = performance.now() - this.startTime;
+                this.statusText.textContent += ` | 加载耗时: ${loadTime.toFixed(0)}ms`;
+            }
+
+            static updateProgress(percent) {
+                document.getElementById('progress-bar').style.width = `${percent}%`;
+            }
+
+            static handleError(error) {
+                console.error('加载失败:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color:#dc2626">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>加载失败:</strong> ${error.message}
+                        <button onclick="location.reload()" 
+                                style="margin-left:1rem;padding:0.5rem 1rem;background:#dc2626;color:white;border:none;border-radius:0.5rem">
+                            重试
+                        </button>
+                    </div>
+                `;
             }
 
             static getCache() {
@@ -175,164 +388,28 @@
                     console.warn('缓存写入失败:', error);
                 }
             }
-
-            static render(data) {
-                const container = document.getElementById('file-list');
-                
-                // 版本显示
-                if (data.version) {
-                    document.getElementById('version').textContent = `v${data.version}`;
-                }
-
-                // 动态渲染各区块
-                const sections = [];
-                
-                if (data.delete && data.delete.length) {
-                    sections.push(this.createSection('🗑️ 待删除文件', data.delete, 'delete'));
-                }
-
-                if (data.download && data.download.additions) {
-                    const count = data.download.additions.length;
-                    const version = data.download.version ? ` (v${data.download.version})` : '';
-                    sections.push(this.createSection(
-                        `📥 下载更新 ${count}个文件${version}`,
-                        data.download.additions,
-                        'download'
-                    ));
-                }
-
-                if (data.replace && data.replace.length) {
-                    sections.push(this.createSection('🔄 文件替换', data.replace, 'replace'));
-                }
-
-                container.append(...sections);
-            }
-
-            static createSection(title, items, type) {
-                const section = document.createElement('div');
-                section.className = 'card';
-                section.innerHTML = `<h2 style="margin-top:0">${title}</h2>`;
-                
-                items.forEach(item => {
-                    section.appendChild(this.createFileItem(item, type));
-                });
-
-                return section;
-            }
-
-            static createFileItem(item, itemType) {
-                const element = document.createElement('div');
-                element.className = 'file-item';
-                
-                // 获取文件扩展名
-                let fileExt = '';
-                let fileName = '';
-                
-                if (itemType === 'download') {
-                    fileName = item.name || '';
-                    fileExt = fileName.split('.').pop();
-                } else if (itemType === 'replace') {
-                    fileName = item.oldName || '';
-                    fileExt = fileName.split('.').pop();
-                } else {
-                    fileName = item;
-                    fileExt = fileName.split('.').pop();
-                }
-
-                // 确定图标
-                let iconClass = CONFIG.ICON_MAP[itemType] || CONFIG.ICON_MAP.default;
-                if (fileExt && CONFIG.ICON_MAP[fileExt]) {
-                    iconClass = CONFIG.ICON_MAP[fileExt];
-                }
-                if (item.icon) {
-                    iconClass = item.icon;
-                }
-
-                // 确定路径显示
-                let pathText = '';
-                if (itemType === 'download') {
-                    pathText = `mods/${item.name}`;
-                } else if (itemType === 'replace') {
-                    const newFileName = item.newUrl.split('/').pop();
-                    pathText = `${item.oldName} → ${newFileName}`;
-                } else {
-                    pathText = `mods/${item}`;
-                }
-
-                // 确定URL显示
-                let url = '';
-                if (itemType === 'download') {
-                    url = item.url;
-                } else if (itemType === 'replace') {
-                    url = item.newUrl;
-                }
-
-                // 创建元素
-                element.innerHTML = `
-                    <div class="file-icon">
-                        <i class="fas ${iconClass}"></i>
-                    </div>
-                    <div class="file-path">${pathText}</div>
-                    <div class="file-url">${url ? new URL(url).hostname : '系统操作'}</div>
-                    ${this.createActionButton(item, itemType, url)}
-                `;
-
-                return element;
-            }
-
-            static createActionButton(item, type, url) {
-                const colors = {
-                    delete: '#ef4444',
-                    download: '#3b82f6',
-                    replace: '#10b981'
-                };
-                
-                const icons = {
-                    delete: 'fa-trash',
-                    download: 'fa-download',
-                    replace: 'fa-rotate'
-                };
-                
-                const texts = {
-                    delete: '删除',
-                    download: '下载',
-                    replace: '替换'
-                };
-
-                if (type === 'delete') {
-                    return `
-                        <div class="action-btn" style="background:${item.color || colors[type]}">
-                            <i class="fas ${icons[type]}"></i>
-                            ${texts[type]}
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <a href="${url}" target="_blank" class="action-btn" 
-                           style="background:${item.color || colors[type]}">
-                            <i class="fas ${icons[type]}"></i>
-                            ${texts[type]}
-                        </a>
-                    `;
-                }
-            }
-
-            static showError(error) {
-                document.getElementById('loading').innerHTML = `
-                    <div style="color:#dc2626">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>加载失败:</strong> ${error.message}
-                        <button onclick="location.reload()" 
-                                style="margin-left:1rem;padding:0.5rem 1rem;background:#dc2626;color:white;border:none;border-radius:0.5rem">
-                            重试
-                        </button>
-                    </div>
-                `;
-            }
         }
 
-        // 启动应用
-        window.addEventListener('DOMContentLoaded', () => PatchManager.init());
+        // 启动优化版管理器
+        window.addEventListener('DOMContentLoaded', () => {
+            OptimizedPatchManager.init();
+            
+            // 进度条动画
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                const bar = document.getElementById('progress-bar');
+                if (!bar) {
+                    clearInterval(progressInterval);
+                    return;
+                }
+                
+                const current = parseInt(bar.style.width) || 0;
+                if (current < 100) {
+                    progress = Math.min(progress + 1, 100);
+                    bar.style.width = `${progress}%`;
+                }
+            }, CONFIG.PROGRESS_INTERVAL);
+        });
     </script>
 </body>
 </html>

@@ -1,0 +1,59 @@
+{
+  "modpack_name": "Your Modpack Name",
+  "versions": [
+    {
+      "version": "1.0.7",
+      "release_date": "2023-11-15",
+      "title": "Major Performance Update",
+      "description": "This update focuses on improving performance and fixing critical bugs.",
+      "downloads": [
+        {
+          "url": "https://github.com/yourusername/yourrepo/raw/main/mods/performancemod.jar",
+          "filename": "performancemod.jar",
+          "destination": "mods",
+          "icon": "https://github.com/yourusername/yourrepo/raw/main/icons/performance.png"
+        },
+        {
+          "url": "https://github.com/yourusername/yourrepo/raw/main/config/performance.cfg",
+          "filename": "performance.cfg",
+          "destination": "config",
+          "icon": "https://github.com/yourusername/yourrepo/raw/main/icons/config.png"
+        }
+      ],
+      "deletions": [
+        {
+          "filename": "oldmod.jar",
+          "destination": "mods"
+        },
+        {
+          "filename": "obsolete.cfg",
+          "destination": "config"
+        }
+      ],
+      "replacements": [
+        {
+          "original": "oldtexturepack.zip",
+          "replacement": "newtexturepack.zip",
+          "destination": "resourcepacks",
+          "icon": "https://github.com/yourusername/yourrepo/raw/main/icons/texture.png"
+        }
+      ]
+    },
+    {
+      "version": "1.0.6",
+      "release_date": "2023-10-20",
+      "title": "Bug Fix Update",
+      "description": "Fixed several critical bugs and improved stability.",
+      "downloads": [
+        {
+          "url": "https://github.com/yourusername/yourrepo/raw/main/mods/bugfixmod.jar",
+          "filename": "bugfixmod.jar",
+          "destination": "mods",
+          "icon": "https://github.com/yourusername/yourrepo/raw/main/icons/bugfix.png"
+        }
+      ],
+      "deletions": [],
+      "replacements": []
+    }
+  ]
+}

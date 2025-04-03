@@ -71,57 +71,68 @@
     <script>
         // 配置管理器
         const CONFIG = {
-            CACHE_KEY: 'mc_patch_v3',
-            CACHE_TTL: 300000, // 5分钟缓存
+            CACHE_KEY: 'mc_patch_v4',
+            CACHE_TTL: 300000,
             REPO_PATH: 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/patch.json',
             FALLBACK_DATA: {
-                download: { additions: [], deletions: [] },
+                download: { 
+                    version: '0.0.0',
+                    additions: [], 
+                    deletions: [] 
+                },
                 replace: []
             }
         };
 
-        // 安全数据获取器
+        // 增强型数据获取器
         class DataFetcher {
             static async fetch() {
                 try {
-                    // 尝试读取缓存
-                    const cached = this._getCache();
+                    const cached = this._getValidCache();
                     if (cached) return cached;
 
-                    // 发起网络请求
                     const response = await fetch(CONFIG.REPO_PATH + '?t=' + Date.now());
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     
-                    // 严格JSON解析
-                    const data = await this._parseJSON(response);
+                    const data = await this._parseSafeJSON(response);
                     this._setCache(data);
                     return data;
                 } catch (error) {
-                    console.warn('网络请求失败:', error);
-                    return this._getCache() || CONFIG.FALLBACK_DATA;
+                    console.warn('Fetch error:', error);
+                    return this._getValidCache() || CONFIG.FALLBACK_DATA;
                 }
             }
 
-            static _parseJSON(response) {
-                return response.json().then(data => {
-                    // JSON结构验证
+            static async _parseSafeJSON(response) {
+                try {
+                    const data = await response.json();
+                    // 结构验证
                     if (!data.download || !Array.isArray(data.replace)) {
-                        throw new Error('无效的JSON结构');
+                        throw new Error('Invalid JSON structure');
                     }
+                    // 字段验证
+                    data.replace.forEach(item => {
+                        if (!item.oldName || !item.newUrl) {
+                            throw new Error('Missing required fields in replace items');
+                        }
+                    });
                     return data;
-                });
+                } catch (error) {
+                    throw new Error(`JSON解析失败: ${error.message}`);
+                }
             }
 
-            static _getCache() {
+            static _getValidCache() {
                 try {
                     const cache = localStorage.getItem(CONFIG.CACHE_KEY);
                     if (!cache) return null;
                     
                     const { expires, data } = JSON.parse(cache);
-                    return Date.now() < expires ? data : null;
-                } catch {
-                    return null;
-                }
+                    if (Date.now() < expires && data.download && data.replace) {
+                        return data;
+                    }
+                } catch {}
+                return null;
             }
 
             static _setCache(data) {
@@ -131,12 +142,12 @@
                         data: data
                     }));
                 } catch (error) {
-                    console.warn('本地存储失败:', error);
+                    console.warn('Cache write failed:', error);
                 }
             }
         }
 
-        // 界面渲染器
+        // 健壮渲染器
         class Renderer {
             static init() {
                 this.fileList = document.getElementById('file-list');
@@ -155,26 +166,28 @@
             }
 
             static _renderVersion(data) {
-                const version = data.download?.version || '未知';
+                const version = data.download?.version || '0.0.0';
                 document.getElementById('version').textContent = `v${version}`;
             }
 
             static _renderSections(data) {
                 const fragment = document.createDocumentFragment();
                 
+                // 删除列表
                 if (data.download.deletions?.length) {
                     fragment.appendChild(this._buildSection(
                         '🗑️ 待删除文件',
                         data.download.deletions.map(file => 
                             this._buildFileItem(
                                 `mods/${file}`,
-                                '待删除',
+                                '#',
                                 'delete'
                             )
                         )
                     ));
                 }
 
+                // 新增文件
                 if (data.download.additions?.length) {
                     fragment.appendChild(this._buildSection(
                         `📥 下载更新 (${data.download.additions.length}个文件)`,
@@ -182,20 +195,20 @@
                             this._buildFileItem(
                                 `mods/${file.name}`,
                                 file.url,
-                                'download',
-                                file.url
+                                'download'
                             )
                         )
                     ));
                 }
 
+                // 替换文件
                 if (data.replace?.length) {
                     fragment.appendChild(this._buildSection(
                         '🔄 文件替换',
-                        data.replace.map(file => 
+                        data.replace.map(item => 
                             this._buildFileItem(
-                                `config/${file.oldName} → ${file.newUrl.split('/').pop()}`,
-                                file.newUrl,
+                                `${item.oldName} → ${this._extractFilename(item.newUrl)}`,
+                                item.newUrl,
                                 'replace'
                             )
                         )
@@ -216,16 +229,23 @@
             }
 
             static _buildFileItem(pathText, url, type) {
-                const item = document.createElement('div');
-                item.className = 'file-item';
-                item.innerHTML = `
-                    <div class="path-display">${this._sanitize(pathText)}</div>
-                    <a href="${this._sanitize(url)}" target="_blank" class="url">${this._getHostname(url)}</a>
-                    <div class="badge" style="${this._getBadgeStyle(type)}">
-                        ${this._getActionText(type)}
+                return `
+                    <div class="file-item">
+                        <div class="path-display">${this._sanitize(pathText)}</div>
+                        <a href="${this._sanitize(url)}" target="_blank" class="url">${this._getHostname(url)}</a>
+                        <div class="badge" style="${this._getBadgeStyle(type)}">
+                            ${this._getActionText(type)}
+                        </div>
                     </div>
                 `;
-                return item;
+            }
+
+            static _extractFilename(url) {
+                try {
+                    return new URL(url).pathname.split('/').pop();
+                } catch {
+                    return '未知文件';
+                }
             }
 
             static _getHostname(url) {

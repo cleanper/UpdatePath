@@ -1,21 +1,33 @@
 {
+    "version": "2.0.1",
+    "delete": [
+        "old_mod.jar",
+        "deprecated_config.cfg"
+    ],
     "download": {
-        "version": "1.2.1",
+        "version": "1.19.2-3.0.0",
         "additions": [
             {
                 "name": "jei-1.19.2.jar",
-                "url": "https://cdn.example.com/mods/jei-1.19.2.jar"
-                "name": "a"
+                "url": "https://example.com/mods/jei-1.19.2.jar",
+                "icon": "fa-leaf"
+            },
+            {
+                "name": "optifine.zip",
+                "url": "https://example.com/mods/optifine_1.19.2.zip",
+                "color": "#f59e0b"
             }
-        ],
-        "deletions": [
-            "old_mod.jar"
         ]
     },
     "replace": [
         {
             "oldName": "config.yml",
-            "newUrl": "https://cdn.example.com/configs/v4-config.yml"
+            "newUrl": "https://example.com/configs/v5-config.yml",
+            "icon": "fa-gears"
+        },
+        {
+            "oldName": "settings.cfg",
+            "newUrl": "https://example.com/configs/new_settings.cfg"
         }
     ]
 }

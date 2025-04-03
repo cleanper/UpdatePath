@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modpack Updates</title>
+    <title>整合包更新日志</title>
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #34495e;
-            --accent-color: #3498db;
-            --text-color: #ecf0f1;
-            --background-color: #1a1a1a;
-            --card-bg: #2d2d2d;
-            --success-color: #2ecc71;
-            --warning-color: #e67e22;
-            --danger-color: #e74c3c;
+            --primary-color: #1e88e5;
+            --secondary-color: #f5f5f5;
+            --accent-color: #0d47a1;
+            --text-color: #333333;
+            --background-color: #ffffff;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --success-color: #43a047;
+            --warning-color: #fb8c00;
+            --danger-color: #e53935;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
             line-height: 1.6;
             color: var(--text-color);
             background-color: var(--background-color);
@@ -33,72 +35,77 @@
         
         header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             padding-bottom: 20px;
-            border-bottom: 1px solid var(--secondary-color);
+            border-bottom: 1px solid var(--border-color);
         }
         
         h1 {
-            color: var(--accent-color);
-            margin-bottom: 5px;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: 500;
         }
         
         .subtitle {
-            color: #bdc3c7;
+            color: #757575;
             font-size: 1.1em;
         }
         
         .version-card {
             background-color: var(--card-bg);
             border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
         }
         
         .version-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--secondary-color);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .version-title {
             font-size: 1.5em;
-            font-weight: bold;
-            color: var(--accent-color);
+            font-weight: 500;
+            color: var(--primary-color);
         }
         
         .version-number {
             background-color: var(--primary-color);
             color: white;
-            padding: 5px 10px;
+            padding: 6px 12px;
             border-radius: 20px;
-            font-weight: bold;
+            font-weight: 500;
             font-size: 0.9em;
         }
         
         .version-date {
-            color: #95a5a6;
+            color: #9e9e9e;
             font-size: 0.9em;
+            margin-top: 5px;
         }
         
         .version-description {
-            margin-bottom: 20px;
-            color: #bdc3c7;
+            margin-bottom: 25px;
+            color: #616161;
+            line-height: 1.7;
         }
         
         .section {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         
         .section-title {
-            font-weight: bold;
-            margin-bottom: 10px;
+            font-weight: 500;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
+            font-size: 1.1em;
         }
         
         .downloads .section-title {
@@ -120,32 +127,51 @@
         }
         
         .file-item {
-            padding: 8px 12px;
-            margin-bottom: 5px;
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background-color: var(--secondary-color);
+            border-radius: 6px;
             display: flex;
             align-items: center;
+            transition: all 0.2s ease;
+        }
+        
+        .file-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
         }
         
         .file-icon {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
             object-fit: contain;
         }
         
         .file-destination {
             margin-left: auto;
-            background-color: var(--secondary-color);
-            padding: 2px 8px;
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 4px 10px;
             border-radius: 4px;
-            font-size: 0.8em;
+            font-size: 0.85em;
+            color: #616161;
         }
         
         .no-changes {
-            color: #95a5a6;
+            color: #9e9e9e;
             font-style: italic;
+            padding: 12px 0;
+        }
+        
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        a:hover {
+            color: var(--accent-color);
+            text-decoration: underline;
         }
         
         @media (max-width: 768px) {
@@ -155,7 +181,7 @@
             }
             
             .version-number {
-                margin-top: 5px;
+                margin-top: 8px;
             }
             
             .file-item {
@@ -165,7 +191,7 @@
             
             .file-destination {
                 margin-left: 0;
-                margin-top: 5px;
+                margin-top: 8px;
             }
         }
     </style>
@@ -173,54 +199,59 @@
 <body>
     <div class="container">
         <header>
-            <h1 id="modpack-name">Loading Modpack...</h1>
-            <div class="subtitle">Update History</div>
+            <h1 id="modpack-name">正在加载整合包...</h1>
+            <div class="subtitle">更新历史记录</div>
         </header>
         
         <div id="versions-container">
-            <!-- Versions will be loaded here -->
+            <!-- 版本信息将在这里加载 -->
         </div>
     </div>
     
     <script>
-        const jsonUrl = 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/updates.json';
+        // 配置
+        const jsonUrl = 'https://raw.githubusercontent.com/你的用户名/你的仓库/main/updates.json';
         
+        // 获取并显示更新数据
         async function loadUpdateData() {
             try {
                 const response = await fetch(jsonUrl);
                 if (!response.ok) {
-                    throw new Error('Failed to fetch update data');
+                    throw new Error('获取更新数据失败');
                 }
                 
                 const data = await response.json();
                 displayUpdateData(data);
             } catch (error) {
-                console.error('Error loading update data:', error);
-                document.getElementById('modpack-name').textContent = 'Error loading update data';
+                console.error('加载更新数据时出错:', error);
+                document.getElementById('modpack-name').textContent = '加载更新数据出错';
                 document.getElementById('versions-container').innerHTML = `
                     <div class="version-card">
-                        <p>Failed to load update information. Please try again later.</p>
+                        <p>无法加载更新信息，请稍后再试。</p>
                     </div>
                 `;
             }
         }
         
         function displayUpdateData(data) {
+            // 设置整合包名称
             document.getElementById('modpack-name').textContent = data.modpack_name;
             
             const versionsContainer = document.getElementById('versions-container');
             
+            // 按版本号排序（新版本在前）
             const sortedVersions = [...data.versions].sort((a, b) => {
                 return compareVersions(b.version, a.version);
             });
             
+            // 为每个版本创建HTML
             sortedVersions.forEach(version => {
                 const versionHtml = `
                     <div class="version-card">
                         <div class="version-header">
                             <div>
                                 <span class="version-title">${version.title}</span>
-                                <div class="version-date">Released: ${version.release_date}</div>
+                                <div class="version-date">发布日期: ${version.release_date}</div>
                             </div>
                             <span class="version-number">v${version.version}</span>
                         </div>
@@ -234,19 +265,19 @@
                                     <polyline points="7 10 12 15 17 10"></polyline>
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
                                 </svg>
-                                New Files to Download
+                                新增文件
                             </div>
                             ${version.downloads && version.downloads.length > 0 ? 
                                 `<ul class="file-list">
                                     ${version.downloads.map(file => `
                                         <li class="file-item">
-                                            ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="File icon">` : ''}
+                                            ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="文件图标">` : ''}
                                             <a href="${file.url}" target="_blank">${file.filename}</a>
                                             <span class="file-destination">${file.destination}</span>
                                         </li>
                                     `).join('')}
                                 </ul>` : 
-                                '<p class="no-changes">No new files in this update</p>'
+                                '<p class="no-changes">此版本没有新增文件</p>'
                             }
                         </div>
                         
@@ -256,7 +287,7 @@
                                     <path d="M3 6h18"></path>
                                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                                 </svg>
-                                Files to Remove
+                                需要删除的文件
                             </div>
                             ${version.deletions && version.deletions.length > 0 ? 
                                 `<ul class="file-list">
@@ -267,7 +298,7 @@
                                         </li>
                                     `).join('')}
                                 </ul>` : 
-                                '<p class="no-changes">No files to remove in this update</p>'
+                                '<p class="no-changes">此版本没有需要删除的文件</p>'
                             }
                         </div>
                         
@@ -279,19 +310,19 @@
                                     <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
                                     <path d="M16 16h5v5"></path>
                                 </svg>
-                                Files to Replace
+                                需要替换的文件
                             </div>
                             ${version.replacements && version.replacements.length > 0 ? 
                                 `<ul class="file-list">
                                     ${version.replacements.map(file => `
                                         <li class="file-item">
-                                            ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="File icon">` : ''}
-                                            <span>Replace <strong>${file.original}</strong> with <strong>${file.replacement}</strong></span>
+                                            ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="文件图标">` : ''}
+                                            <span>将 <strong>${file.original}</strong> 替换为 <strong>${file.replacement}</strong></span>
                                             <span class="file-destination">${file.destination}</span>
                                         </li>
                                     `).join('')}
                                 </ul>` : 
-                                '<p class="no-changes">No files to replace in this update</p>'
+                                '<p class="no-changes">此版本没有需要替换的文件</p>'
                             }
                         </div>
                     </div>
@@ -301,6 +332,7 @@
             });
         }
         
+        // 辅助函数：比较版本号
         function compareVersions(a, b) {
             const partsA = a.split('.').map(Number);
             const partsB = b.split('.').map(Number);
@@ -316,6 +348,7 @@
             return 0;
         }
         
+        // 页面加载时获取数据
         document.addEventListener('DOMContentLoaded', loadUpdateData);
     </script>
 </body>

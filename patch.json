@@ -5,6 +5,7 @@
             {
                 "name": "jei-1.19.2.jar",
                 "url": "https://cdn.example.com/mods/jei-1.19.2.jar"
+                "name": "a"
             }
         ],
         "deletions": [

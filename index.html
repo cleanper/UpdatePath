@@ -1,415 +1,322 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 整合包管理器</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Modpack Updates</title>
     <style>
         :root {
-            --primary: #6366f1;
-            --background: #f8fafc;
-            --surface: #ffffff;
-            --border: #e2e8f0;
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --text-color: #ecf0f1;
+            --background-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --success-color: #2ecc71;
+            --warning-color: #e67e22;
+            --danger-color: #e74c3c;
         }
-
+        
         body {
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
-            background: var(--background);
-            line-height: 1.6;
         }
-
-        .card {
-            background: var(--surface);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin: 1.5rem 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border);
-        }
-
-        .file-item {
-            display: grid;
-            grid-template-columns: 40px minmax(200px, 1fr) 2fr 120px;
-            align-items: center;
-            gap: 1.5rem;
-            padding: 1rem;
-            margin: 0.75rem 0;
-            background: var(--background);
-            border-radius: 0.75rem;
-        }
-
-        .file-icon {
+        
+        header {
             text-align: center;
-            font-size: 1.2rem;
-            color: #64748b;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--secondary-color);
         }
-
-        .file-path {
-            font-family: 'Fira Code', monospace;
-            font-size: 0.95rem;
-            color: #334155;
+        
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 5px;
         }
-
-        .file-url {
-            color: var(--primary);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            font-size: 0.9rem;
+        
+        .subtitle {
+            color: #bdc3c7;
+            font-size: 1.1em;
         }
-
-        .action-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            font-size: 0.9rem;
-            cursor: pointer;
-            text-decoration: none;
-            transition: all 0.2s;
+        
+        .version-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
-        .action-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
-        .status-bar {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: rgba(0,0,0,0.05);
-            border-radius: 0.5rem;
-            font-size: 0.9rem;
+        
+        .version-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--secondary-color);
         }
-
-        .progress {
-            height: 6px;
-            background: #e2e8f0;
-            border-radius: 3px;
-            margin-top: 0.5rem;
-            overflow: hidden;
+        
+        .version-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--accent-color);
         }
-
-        .progress-bar {
-            height: 100%;
-            background: var(--primary);
-            transition: width 0.3s ease;
+        
+        .version-number {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
         }
-
+        
+        .version-date {
+            color: #95a5a6;
+            font-size: 0.9em;
+        }
+        
+        .version-description {
+            margin-bottom: 20px;
+            color: #bdc3c7;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .downloads .section-title {
+            color: var(--success-color);
+        }
+        
+        .deletions .section-title {
+            color: var(--danger-color);
+        }
+        
+        .replacements .section-title {
+            color: var(--warning-color);
+        }
+        
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .file-item {
+            padding: 8px 12px;
+            margin-bottom: 5px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .file-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            object-fit: contain;
+        }
+        
+        .file-destination {
+            margin-left: auto;
+            background-color: var(--secondary-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        
+        .no-changes {
+            color: #95a5a6;
+            font-style: italic;
+        }
+        
         @media (max-width: 768px) {
+            .version-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .version-number {
+                margin-top: 5px;
+            }
+            
             .file-item {
-                grid-template-columns: 40px 1fr;
-                grid-template-rows: auto auto auto;
+                flex-direction: column;
+                align-items: flex-start;
             }
             
-            .file-url {
-                grid-column: 2;
-            }
-            
-            .action-btn {
-                grid-column: 2;
-                justify-self: start;
+            .file-destination {
+                margin-left: 0;
+                margin-top: 5px;
             }
         }
     </style>
 </head>
 <body>
-    <h1>🛠️ 整合包管理器 <span id="version" style="font-size:0.8em;color:#64748b"></span></h1>
-    <div id="loading" class="card">
-        <div style="display: flex; align-items: center; gap: 1rem;">
-            <i class="fas fa-spinner fa-spin"></i>
-            <span>正在加载更新信息...</span>
-        </div>
-        <div class="progress">
-            <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+    <div class="container">
+        <header>
+            <h1 id="modpack-name">Loading Modpack...</h1>
+            <div class="subtitle">Update History</div>
+        </header>
+        
+        <div id="versions-container">
+            <!-- Versions will be loaded here -->
         </div>
     </div>
-    <div id="file-list"></div>
-    <div id="status" class="status-bar" style="display:none">
-        <span id="status-text">准备就绪</span>
-        <span id="latency">延迟: 计算中...</span>
-    </div>
-
+    
     <script>
-        // 性能优化配置
-        const CONFIG = {
-            CACHE_KEY: 'mc_patch_optimized',
-            CACHE_TTL: 300000,
-            DATA_URL: 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/patch.json',
-            ICON_MAP: {
-                default: 'fa-file',
-                delete: 'fa-trash',
-                download: 'fa-download',
-                replace: 'fa-exchange-alt',
-                jar: 'fa-box-archive',
-                zip: 'fa-file-zipper',
-                yml: 'fa-file-code',
-                cfg: 'fa-gear'
-            },
-            PROGRESS_INTERVAL: 100 // 进度条更新间隔(ms)
-        };
-
-        class OptimizedPatchManager {
-            static async init() {
-                this.startTime = performance.now();
-                this.updateProgress(10);
-                
-                try {
-                    // 并行初始化UI和加载数据
-                    await Promise.all([
-                        this.initUI(),
-                        this.loadData()
-                    ]);
-                    
-                    this.updateProgress(90);
-                    this.finalizeRender();
-                } catch (error) {
-                    this.handleError(error);
-                } finally {
-                    this.updateProgress(100);
-                    this.showStatus();
+        const jsonUrl = 'https://raw.githubusercontent.com/yourusername/yourrepo/main/updates.json';
+        
+        async function loadUpdateData() {
+            try {
+                const response = await fetch(jsonUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch update data');
                 }
-            }
-
-            static initUI() {
-                // 预渲染UI框架
-                this.fileList = document.getElementById('file-list');
-                this.loading = document.getElementById('loading');
-                this.status = document.getElementById('status');
-                this.statusText = document.getElementById('status-text');
-                this.latencyText = document.getElementById('latency');
-                this.updateProgress(30);
-            }
-
-            static async loadData() {
-                this.updateProgress(40);
-                const data = await this.fetchWithCache();
-                this.updateProgress(70);
-                this.render(data);
-            }
-
-            static async fetchWithCache() {
-                // 尝试读取缓存
-                const cached = this.getCache();
-                if (cached) {
-                    this.statusText.textContent = "使用缓存数据";
-                    return cached;
-                }
-
-                // 测量请求延迟
-                const latencyStart = performance.now();
-                const response = await fetch(CONFIG.DATA_URL + '?t=' + Date.now());
-                const latency = performance.now() - latencyStart;
-                this.recordLatency(latency);
-
-                if (!response.ok) throw new Error(`网络错误: ${response.status}`);
                 
                 const data = await response.json();
-                this.setCache(data);
-                this.statusText.textContent = "使用网络数据";
-                return data;
-            }
-
-            static recordLatency(latency) {
-                this.latency = latency;
-                this.latencyText.textContent = `延迟: ${latency.toFixed(0)}ms`;
-            }
-
-            static render(data) {
-                if (data.version) {
-                    document.getElementById('version').textContent = `v${data.version}`;
-                }
-
-                const fragment = document.createDocumentFragment();
-                
-                // 使用requestAnimationFrame分块渲染
-                const renderChunk = (items, type, start = 0) => {
-                    const chunkSize = 10; // 每批渲染10个
-                    const end = Math.min(start + chunkSize, items.length);
-                    
-                    for (let i = start; i < end; i++) {
-                        fragment.appendChild(this.createFileItem(items[i], type));
-                    }
-                    
-                    if (end < items.length) {
-                        requestAnimationFrame(() => renderChunk(items, type, end));
-                    }
-                };
-
-                if (data.delete?.length) {
-                    const section = this.createSection('🗑️ 待删除文件');
-                    fragment.appendChild(section);
-                    renderChunk(data.delete, 'delete');
-                }
-
-                if (data.download?.additions?.length) {
-                    const version = data.download.version ? ` (v${data.download.version})` : '';
-                    const section = this.createSection(`📥 下载更新 ${data.download.additions.length}个文件${version}`);
-                    fragment.appendChild(section);
-                    renderChunk(data.download.additions, 'download');
-                }
-
-                if (data.replace?.length) {
-                    const section = this.createSection('🔄 文件替换');
-                    fragment.appendChild(section);
-                    renderChunk(data.replace, 'replace');
-                }
-
-                this.fileList.appendChild(fragment);
-            }
-
-            static createSection(title) {
-                const section = document.createElement('div');
-                section.className = 'card';
-                section.innerHTML = `<h2 style="margin-top:0">${title}</h2>`;
-                return section;
-            }
-
-            static createFileItem(item, type) {
-                const element = document.createElement('div');
-                element.className = 'file-item';
-                
-                // 性能优化：使用模板字符串一次性生成
-                const { icon, path, url } = this.getItemMetadata(item, type);
-                const button = this.createActionButton(item, type, url);
-                
-                element.innerHTML = `
-                    <div class="file-icon"><i class="fas ${icon}"></i></div>
-                    <div class="file-path">${path}</div>
-                    <div class="file-url">${url ? new URL(url).hostname : '系统操作'}</div>
-                    ${button}
-                `;
-
-                return element;
-            }
-
-            static getItemMetadata(item, type) {
-                let fileExt = '', fileName = '', path = '', url = '';
-                
-                if (type === 'download') {
-                    fileName = item.name || '';
-                    fileExt = fileName.split('.').pop();
-                    path = `mods/${fileName}`;
-                    url = item.url;
-                } else if (type === 'replace') {
-                    fileName = item.oldName || '';
-                    fileExt = fileName.split('.').pop();
-                    const newFile = item.newUrl.split('/').pop();
-                    path = `${fileName} → ${newFile}`;
-                    url = item.newUrl;
-                } else {
-                    fileName = item;
-                    fileExt = fileName.split('.').pop();
-                    path = `mods/${fileName}`;
-                }
-
-                // 确定图标
-                let icon = CONFIG.ICON_MAP[type] || CONFIG.ICON_MAP.default;
-                if (fileExt && CONFIG.ICON_MAP[fileExt]) icon = CONFIG.ICON_MAP[fileExt];
-                if (item.icon) icon = item.icon;
-
-                return { icon, path, url };
-            }
-
-            static createActionButton(item, type, url) {
-                const colors = { delete: '#ef4444', download: '#3b82f6', replace: '#10b981' };
-                const icons = { delete: 'fa-trash', download: 'fa-download', replace: 'fa-rotate' };
-                const texts = { delete: '删除', download: '下载', replace: '替换' };
-                const color = item.color || colors[type];
-
-                if (type === 'delete') {
-                    return `<div class="action-btn" style="background:${color}">
-                        <i class="fas ${icons[type]}"></i>${texts[type]}
-                    </div>`;
-                }
-                
-                return `<a href="${url}" target="_blank" class="action-btn" style="background:${color}">
-                    <i class="fas ${icons[type]}"></i>${texts[type]}
-                </a>`;
-            }
-
-            static finalizeRender() {
-                this.loading.style.display = 'none';
-                this.fileList.style.display = 'block';
-            }
-
-            static showStatus() {
-                this.status.style.display = 'flex';
-                const loadTime = performance.now() - this.startTime;
-                this.statusText.textContent += ` | 加载耗时: ${loadTime.toFixed(0)}ms`;
-            }
-
-            static updateProgress(percent) {
-                document.getElementById('progress-bar').style.width = `${percent}%`;
-            }
-
-            static handleError(error) {
-                console.error('加载失败:', error);
-                document.getElementById('loading').innerHTML = `
-                    <div style="color:#dc2626">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>加载失败:</strong> ${error.message}
-                        <button onclick="location.reload()" 
-                                style="margin-left:1rem;padding:0.5rem 1rem;background:#dc2626;color:white;border:none;border-radius:0.5rem">
-                            重试
-                        </button>
+                displayUpdateData(data);
+            } catch (error) {
+                console.error('Error loading update data:', error);
+                document.getElementById('modpack-name').textContent = 'Error loading update data';
+                document.getElementById('versions-container').innerHTML = `
+                    <div class="version-card">
+                        <p>Failed to load update information. Please try again later.</p>
                     </div>
                 `;
             }
-
-            static getCache() {
-                try {
-                    const cache = localStorage.getItem(CONFIG.CACHE_KEY);
-                    if (!cache) return null;
-                    
-                    const { expires, data } = JSON.parse(cache);
-                    return Date.now() < expires ? data : null;
-                } catch {
-                    return null;
-                }
-            }
-
-            static setCache(data) {
-                try {
-                    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
-                        expires: Date.now() + CONFIG.CACHE_TTL,
-                        data: data
-                    }));
-                } catch (error) {
-                    console.warn('缓存写入失败:', error);
-                }
-            }
         }
-
-        // 启动优化版管理器
-        window.addEventListener('DOMContentLoaded', () => {
-            OptimizedPatchManager.init();
+        
+        function displayUpdateData(data) {
+            document.getElementById('modpack-name').textContent = data.modpack_name;
             
-            // 进度条动画
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                const bar = document.getElementById('progress-bar');
-                if (!bar) {
-                    clearInterval(progressInterval);
-                    return;
-                }
+            const versionsContainer = document.getElementById('versions-container');
+            
+            const sortedVersions = [...data.versions].sort((a, b) => {
+                return compareVersions(b.version, a.version);
+            });
+            
+            sortedVersions.forEach(version => {
+                const versionHtml = `
+                    <div class="version-card">
+                        <div class="version-header">
+                            <div>
+                                <span class="version-title">${version.title}</span>
+                                <div class="version-date">Released: ${version.release_date}</div>
+                            </div>
+                            <span class="version-number">v${version.version}</span>
+                        </div>
+                        
+                        <div class="version-description">${version.description}</div>
+                        
+                        <div class="section downloads">
+                            <div class="section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                New Files to Download
+                            </div>
+                            ${version.downloads && version.downloads.length > 0 ? 
+                                `<ul class="file-list">
+                                    ${version.downloads.map(file => `
+                                        <li class="file-item">
+                                            ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="File icon">` : ''}
+                                            <a href="${file.url}" target="_blank">${file.filename}</a>
+                                            <span class="file-destination">${file.destination}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>` : 
+                                '<p class="no-changes">No new files in this update</p>'
+                            }
+                        </div>
+                        
+                        <div class="section deletions">
+                            <div class="section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Files to Remove
+                            </div>
+                            ${version.deletions && version.deletions.length > 0 ? 
+                                `<ul class="file-list">
+                                    ${version.deletions.map(file => `
+                                        <li class="file-item">
+                                            ${file.filename}
+                                            <span class="file-destination">${file.destination}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>` : 
+                                '<p class="no-changes">No files to remove in this update</p>'
+                            }
+                        </div>
+                        
+                        <div class="section replacements">
+                            <div class="section-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                    <path d="M3 3v5h5"></path>
+                                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                                    <path d="M16 16h5v5"></path>
+                                </svg>
+                                Files to Replace
+                            </div>
+                            ${version.replacements && version.replacements.length > 0 ? 
+                                `<ul class="file-list">
+                                    ${version.replacements.map(file => `
+                                        <li class="file-item">
+                                            ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="File icon">` : ''}
+                                            <span>Replace <strong>${file.original}</strong> with <strong>${file.replacement}</strong></span>
+                                            <span class="file-destination">${file.destination}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>` : 
+                                '<p class="no-changes">No files to replace in this update</p>'
+                            }
+                        </div>
+                    </div>
+                `;
                 
-                const current = parseInt(bar.style.width) || 0;
-                if (current < 100) {
-                    progress = Math.min(progress + 1, 100);
-                    bar.style.width = `${progress}%`;
-                }
-            }, CONFIG.PROGRESS_INTERVAL);
-        });
+                versionsContainer.innerHTML += versionHtml;
+            });
+        }
+        
+        function compareVersions(a, b) {
+            const partsA = a.split('.').map(Number);
+            const partsB = b.split('.').map(Number);
+            
+            for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+                const partA = partsA[i] || 0;
+                const partB = partsB[i] || 0;
+                
+                if (partA > partB) return 1;
+                if (partA < partB) return -1;
+            }
+            
+            return 0;
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadUpdateData);
     </script>
 </body>
 </html>

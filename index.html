@@ -3,311 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft 整合包管理器</title>
+    <title>动态整合包管理器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --primary: #6366f1;
+            --primary: #4f46e5;
             --background: #f8fafc;
             --surface: #ffffff;
-            --border: #e2e8f0;
         }
 
         body {
-            font-family: 'Inter', -apple-system, system-ui, sans-serif;
-            max-width: 1000px;
+            font-family: 'Inter', system-ui, sans-serif;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
             background: var(--background);
-            line-height: 1.6;
         }
 
         .card {
             background: var(--surface);
-            border-radius: 1rem;
+            border-radius: 12px;
             padding: 1.5rem;
-            margin: 1rem 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border);
+            margin: 1.5rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
 
         .file-item {
             display: grid;
-            grid-template-columns: minmax(200px, 1fr) 2fr 100px;
+            grid-template-columns: 40px 1fr 120px 100px;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
             padding: 1rem;
             margin: 0.5rem 0;
             background: var(--background);
-            border-radius: 0.75rem;
+            border-radius: 8px;
         }
 
-        .path-display {
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            color: #475569;
-        }
-
-        .url {
-            color: var(--primary);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .badge {
-            padding: 0.35rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.85rem;
+        .file-icon {
+            font-size: 1.2rem;
             text-align: center;
-            font-weight: 500;
+        }
+
+        .file-name {
+            font-family: 'Fira Code', monospace;
+            color: #334155;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        .action-btn:hover {
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
-    <h1>🛠️ 整合包管理器 <span id="version" class="badge" style="background: #6366f1; color: white"></span></h1>
-    <div id="loading" class="card">正在加载更新信息...</div>
+    <h1>🎮 整合包管理器 <span id="version" style="font-size: 0.8em; color: #64748b"></span></h1>
+    <div id="loading" class="card">正在加载配置...</div>
     <div id="file-list"></div>
 
     <script>
-        // 配置管理器
+        // 动态配置
         const CONFIG = {
-            CACHE_KEY: 'mc_patch_v4',
-            CACHE_TTL: 300000,
-            REPO_PATH: 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/patch.json',
-            FALLBACK_DATA: {
-                download: { 
-                    version: '0.0.0',
-                    additions: [], 
-                    deletions: [] 
-                },
-                replace: []
+            DATA_URL: 'https://your-api-endpoint.example/config.json',
+            ICON_MAP: {
+                delete: 'fas fa-trash',
+                download: 'fas fa-download',
+                replace: 'fas fa-exchange-alt'
             }
         };
 
-        // 增强型数据获取器
-        class DataFetcher {
-            static async fetch() {
+        // 动态加载器
+        class DynamicLoader {
+            static async load() {
                 try {
-                    const cached = this._getValidCache();
-                    if (cached) return cached;
-
-                    const response = await fetch(CONFIG.REPO_PATH + '?t=' + Date.now());
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    
-                    const data = await this._parseSafeJSON(response);
-                    this._setCache(data);
-                    return data;
-                } catch (error) {
-                    console.warn('Fetch error:', error);
-                    return this._getValidCache() || CONFIG.FALLBACK_DATA;
-                }
-            }
-
-            static async _parseSafeJSON(response) {
-                try {
+                    const response = await fetch(CONFIG.DATA_URL);
                     const data = await response.json();
-                    // 结构验证
-                    if (!data.download || !Array.isArray(data.replace)) {
-                        throw new Error('Invalid JSON structure');
-                    }
-                    // 字段验证
-                    data.replace.forEach(item => {
-                        if (!item.oldName || !item.newUrl) {
-                            throw new Error('Missing required fields in replace items');
-                        }
-                    });
-                    return data;
+                    this.render(data);
+                    document.getElementById('loading').remove();
                 } catch (error) {
-                    throw new Error(`JSON解析失败: ${error.message}`);
+                    console.error('加载失败:', error);
+                    document.getElementById('loading').innerHTML = `
+                        <div style="color: #dc2626">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            加载失败，请刷新重试
+                        </div>
+                    `;
                 }
             }
 
-            static _getValidCache() {
-                try {
-                    const cache = localStorage.getItem(CONFIG.CACHE_KEY);
-                    if (!cache) return null;
-                    
-                    const { expires, data } = JSON.parse(cache);
-                    if (Date.now() < expires && data.download && data.replace) {
-                        return data;
-                    }
-                } catch {}
-                return null;
-            }
-
-            static _setCache(data) {
-                try {
-                    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
-                        expires: Date.now() + CONFIG.CACHE_TTL,
-                        data: data
-                    }));
-                } catch (error) {
-                    console.warn('Cache write failed:', error);
-                }
-            }
-        }
-
-        // 健壮渲染器
-        class Renderer {
-            static init() {
-                this.fileList = document.getElementById('file-list');
-                this.loading = document.getElementById('loading');
-            }
-
-            static async render() {
-                try {
-                    const data = await DataFetcher.fetch();
-                    this._clearLoading();
-                    this._renderVersion(data);
-                    this._renderSections(data);
-                } catch (error) {
-                    this._showError(error);
-                }
-            }
-
-            static _renderVersion(data) {
-                const version = data.download?.version || '0.0.0';
-                document.getElementById('version').textContent = `v${version}`;
-            }
-
-            static _renderSections(data) {
-                const fragment = document.createDocumentFragment();
+            static render(data) {
+                const container = document.getElementById('file-list');
                 
-                // 删除列表
-                if (data.download.deletions?.length) {
-                    fragment.appendChild(this._buildSection(
-                        '🗑️ 待删除文件',
-                        data.download.deletions.map(file => 
-                            this._buildFileItem(
-                                `mods/${file}`,
-                                '#',
-                                'delete'
-                            )
-                        )
-                    ));
+                // 版本显示
+                if(data.version) {
+                    document.getElementById('version').textContent = `v${data.version}`;
                 }
 
-                // 新增文件
-                if (data.download.additions?.length) {
-                    fragment.appendChild(this._buildSection(
-                        `📥 下载更新 (${data.download.additions.length}个文件)`,
-                        data.download.additions.map(file => 
-                            this._buildFileItem(
-                                `mods/${file.name}`,
-                                file.url,
-                                'download'
-                            )
-                        )
-                    ));
-                }
+                // 动态生成内容
+                const sections = {
+                    delete: this.createSection('待删除文件', data.deleteFiles),
+                    download: this.createSection('下载更新', data.downloadFiles),
+                    replace: this.createSection('文件替换', data.replaceFiles)
+                };
 
-                // 替换文件
-                if (data.replace?.length) {
-                    fragment.appendChild(this._buildSection(
-                        '🔄 文件替换',
-                        data.replace.map(item => 
-                            this._buildFileItem(
-                                `${item.oldName} → ${this._extractFilename(item.newUrl)}`,
-                                item.newUrl,
-                                'replace'
-                            )
-                        )
-                    ));
-                }
-
-                this.fileList.appendChild(fragment);
+                container.append(...Object.values(sections));
             }
 
-            static _buildSection(title, items) {
+            static createSection(title, items) {
+                if(!items || !items.length) return;
+                
                 const section = document.createElement('div');
                 section.className = 'card';
-                section.innerHTML = `
-                    <h2 style="margin: 0 0 1rem 0">${title}</h2>
-                    ${items.join('')}
-                `;
+                section.innerHTML = `<h3>${title}</h3>`;
+                
+                items.forEach(item => {
+                    const element = this.createFileItem(item);
+                    section.append(element);
+                });
+
                 return section;
             }
 
-            static _buildFileItem(pathText, url, type) {
-                return `
-                    <div class="file-item">
-                        <div class="path-display">${this._sanitize(pathText)}</div>
-                        <a href="${this._sanitize(url)}" target="_blank" class="url">${this._getHostname(url)}</a>
-                        <div class="badge" style="${this._getBadgeStyle(type)}">
-                            ${this._getActionText(type)}
-                        </div>
-                    </div>
+            static createFileItem(item) {
+                const element = document.createElement('div');
+                element.className = 'file-item';
+                
+                // 动态图标系统
+                const icon = item.icon || CONFIG.ICON_MAP[item.type];
+                const action = this.getAction(item);
+
+                element.innerHTML = `
+                    <div class="file-icon">${icon ? `<i class="${icon}"></i>` : '📁'}</div>
+                    <div class="file-name">${item.name || item.path}</div>
+                    ${action}
                 `;
+
+                return element;
             }
 
-            static _extractFilename(url) {
-                try {
-                    return new URL(url).pathname.split('/').pop();
-                } catch {
-                    return '未知文件';
+            static getAction(item) {
+                switch(item.type) {
+                    case 'download':
+                        return `<a href="${item.url}" class="action-btn" style="background:${item.color || '#3b82f6'}">
+                            <i class="fas fa-download"></i>
+                            下载
+                        </a>`;
+                        
+                    case 'replace':
+                        return `<a href="${item.newUrl}" class="action-btn" style="background:${item.color || '#10b981'}">
+                            <i class="fas fa-sync"></i>
+                            替换
+                        </a>`;
+                        
+                    default: // delete
+                        return `<div class="action-btn" style="background:${item.color || '#ef4444'}">
+                            <i class="fas fa-trash"></i>
+                            删除
+                        </div>`;
                 }
-            }
-
-            static _getHostname(url) {
-                try {
-                    return new URL(url).hostname;
-                } catch {
-                    return '无效链接';
-                }
-            }
-
-            static _getBadgeStyle(type) {
-                const colors = {
-                    delete: 'background: #ef4444; color: white',
-                    download: 'background: #3b82f6; color: white',
-                    replace: 'background: #10b981; color: white'
-                };
-                return colors[type] || '';
-            }
-
-            static _getActionText(type) {
-                return {
-                    delete: '删除',
-                    download: '下载',
-                    replace: '替换'
-                }[type] || '';
-            }
-
-            static _sanitize(text) {
-                return text.toString()
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
-            }
-
-            static _clearLoading() {
-                this.loading.remove();
-            }
-
-            static _showError(error) {
-                this.fileList.innerHTML = `
-                    <div class="card" style="background: #fee2e2; color: #dc2626">
-                        <h3>⚠️ 加载失败</h3>
-                        <p>${this._sanitize(error.message)}</p>
-                        <button onclick="window.location.reload()" 
-                            style="margin-top: 0.5rem;
-                                   padding: 0.5rem 1rem;
-                                   background: #dc2626;
-                                   color: white;
-                                   border: none;
-                                   border-radius: 0.375rem;">
-                            重试
-                        </button>
-                    </div>
-                `;
             }
         }
 
         // 初始化
-        window.addEventListener('DOMContentLoaded', () => {
-            Renderer.init();
-            Renderer.render();
-        });
+        window.addEventListener('DOMContentLoaded', () => DynamicLoader.load());
     </script>
 </body>
 </html>

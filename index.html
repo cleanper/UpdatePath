@@ -3,218 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的世界整合包补丁</title>
+    <title>Minecraft 整合包管理器</title>
     <style>
-        /* 基础样式 */
+        :root {
+            --primary: #6366f1;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 800px;
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 20px;
-            background-color: #f8f9fa;
+            padding: 2rem;
+            background: var(--background);
+            line-height: 1.6;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
         }
 
         .file-item {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: minmax(200px, 1fr) 2fr 100px;
             align-items: center;
-            padding: 12px;
-            margin: 8px 0;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            gap: 1.5rem;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--background);
+            border-radius: 0.75rem;
+        }
+
+        .path-display {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #475569;
         }
 
         .url {
-            color: #0366d6;
-            font-size: 0.9em;
-            margin-left: 15px;
-            word-break: break-all;
-            max-width: 60%;
+            color: var(--primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        /* 加载动画 */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #0366d6;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error-box {
-            background: #ffeef0;
-            color: #cb2431;
-            padding: 15px;
+        .badge {
+            padding: 0.35rem 0.8rem;
             border-radius: 6px;
-            margin: 20px 0;
+            font-size: 0.85rem;
+            text-align: center;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <h1>我的世界整合包补丁 <span id="version"></span></h1>
-    <div id="loading" class="loader"></div>
-    <div id="file-list" style="display: none;"></div>
-    <div id="error-container"></div>
+    <h1>🛠️ 整合包管理器 <span id="version" class="badge" style="background: #6366f1; color: white"></span></h1>
+    <div id="loading" class="card">正在加载更新信息...</div>
+    <div id="file-list"></div>
 
     <script>
-        // 配置常量
-        const CACHE_KEY = 'patchData';
-        const CACHE_TTL = 5 * 60 * 1000; // 5分钟缓存
-        const REPO_CONFIG = {
-            owner: 'cleanper',
-            repo: 'UpdatePath',
-            path: 'patch.json'
-        };
-
-        // 缓存管理
-        const cacheManager = {
-            get: () => {
-                const cached = localStorage.getItem(CACHE_KEY);
-                if (!cached) return null;
-                
-                const { timestamp, data } = JSON.parse(cached);
-                return (Date.now() - timestamp < CACHE_TTL) ? data : null;
-            },
-            set: (data) => {
-                const cacheData = {
-                    timestamp: Date.now(),
-                    data: data
-                };
-                localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        // 配置管理器
+        const CONFIG = {
+            CACHE_KEY: 'mc_patch_v3',
+            CACHE_TTL: 300000, // 5分钟缓存
+            REPO_PATH: 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/patch.json',
+            FALLBACK_DATA: {
+                download: { additions: [], deletions: [] },
+                replace: []
             }
         };
 
-        // 网络请求
-        async function fetchWithCache() {
-            // 尝试从缓存获取
-            const cachedData = cacheManager.get();
-            if (cachedData) return cachedData;
+        // 安全数据获取器
+        class DataFetcher {
+            static async fetch() {
+                try {
+                    // 尝试读取缓存
+                    const cached = this._getCache();
+                    if (cached) return cached;
 
-            // 发起新请求
-            try {
-                const apiUrl = `https://api.github.com/repos/${REPO_CONFIG.owner}/${REPO_CONFIG.repo}/contents/${REPO_CONFIG.path}`;
-                const response = await fetch(apiUrl, {
-                    headers: {
-                        'Accept': 'application/vnd.github.v3+json'
+                    // 发起网络请求
+                    const response = await fetch(CONFIG.REPO_PATH + '?t=' + Date.now());
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    // 严格JSON解析
+                    const data = await this._parseJSON(response);
+                    this._setCache(data);
+                    return data;
+                } catch (error) {
+                    console.warn('网络请求失败:', error);
+                    return this._getCache() || CONFIG.FALLBACK_DATA;
+                }
+            }
+
+            static _parseJSON(response) {
+                return response.json().then(data => {
+                    // JSON结构验证
+                    if (!data.download || !Array.isArray(data.replace)) {
+                        throw new Error('无效的JSON结构');
                     }
+                    return data;
                 });
+            }
 
-                if (!response.ok) throw new Error(`HTTP错误 ${response.status}`);
-                
-                const data = await response.json();
-                const decoded = JSON.parse(atob(data.content));
-                
-                // 更新缓存和版本显示
-                cacheManager.set(decoded);
-                if (decoded.download?.version) {
-                    document.getElementById('version').textContent = decoded.download.version;
+            static _getCache() {
+                try {
+                    const cache = localStorage.getItem(CONFIG.CACHE_KEY);
+                    if (!cache) return null;
+                    
+                    const { expires, data } = JSON.parse(cache);
+                    return Date.now() < expires ? data : null;
+                } catch {
+                    return null;
                 }
-                return decoded;
-            } catch (error) {
-                // 回退到缓存（如果有）
-                const fallback = cacheManager.get();
-                if (fallback) {
-                    showError('连接失败，使用缓存数据', true);
-                    return fallback.data;
+            }
+
+            static _setCache(data) {
+                try {
+                    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({
+                        expires: Date.now() + CONFIG.CACHE_TTL,
+                        data: data
+                    }));
+                } catch (error) {
+                    console.warn('本地存储失败:', error);
                 }
-                throw error;
             }
         }
 
-        // 界面渲染
-        function renderUI(patchInfo) {
-            const fileListDiv = document.getElementById('file-list');
-            fileListDiv.innerHTML = ''; // 清空旧内容
-
-            // 删除列表
-            if (patchInfo.download?.deletions?.length) {
-                const deleteSection = createSection('需要删除的文件', 
-                    patchInfo.download.deletions.map(file => 
-                        `<li class="file-item">
-                            <span>${file}</span>
-                            <span class="url">[待删除]</span>
-                        </li>`
-                    )
-                );
-                fileListDiv.appendChild(deleteSection);
+        // 界面渲染器
+        class Renderer {
+            static init() {
+                this.fileList = document.getElementById('file-list');
+                this.loading = document.getElementById('loading');
             }
 
-            // 下载列表
-            if (patchInfo.download?.additions?.length) {
-                const downloadSection = createSection(
-                    `需要下载的文件（版本 ${patchInfo.download.version}）`,
-                    patchInfo.download.additions.map(file => 
-                        `<li class="file-item">
-                            <a href="${file.url}" target="_blank">${file.name}</a>
-                            <a href="${file.url}" class="url">${file.url}</a>
-                        </li>`
-                    )
-                );
-                fileListDiv.appendChild(downloadSection);
+            static async render() {
+                try {
+                    const data = await DataFetcher.fetch();
+                    this._clearLoading();
+                    this._renderVersion(data);
+                    this._renderSections(data);
+                } catch (error) {
+                    this._showError(error);
+                }
             }
 
-            // 替换列表
-            if (patchInfo.replace?.length) {
-                const replaceSection = createSection('需要替换的文件',
-                    patchInfo.replace.map(file => 
-                        `<li class="file-item">
-                            <span>原文件: ${file.oldName}</span>
-                            <a href="${file.newUrl}" class="url">${file.newUrl}</a>
-                        </li>`
-                    )
-                );
-                fileListDiv.appendChild(replaceSection);
+            static _renderVersion(data) {
+                const version = data.download?.version || '未知';
+                document.getElementById('version').textContent = `v${version}`;
             }
 
-            // 显示内容
-            document.getElementById('loading').style.display = 'none';
-            fileListDiv.style.display = 'block';
-        }
+            static _renderSections(data) {
+                const fragment = document.createDocumentFragment();
+                
+                if (data.download.deletions?.length) {
+                    fragment.appendChild(this._buildSection(
+                        '🗑️ 待删除文件',
+                        data.download.deletions.map(file => 
+                            this._buildFileItem(
+                                `mods/${file}`,
+                                '待删除',
+                                'delete'
+                            )
+                        )
+                    ));
+                }
 
-        function createSection(title, items) {
-            const section = document.createElement('div');
-            section.innerHTML = `
-                <h2>${title}</h2>
-                <ul>${items.join('')}</ul>
-            `;
-            return section;
-        }
+                if (data.download.additions?.length) {
+                    fragment.appendChild(this._buildSection(
+                        `📥 下载更新 (${data.download.additions.length}个文件)`,
+                        data.download.additions.map(file => 
+                            this._buildFileItem(
+                                `mods/${file.name}`,
+                                file.url,
+                                'download',
+                                file.url
+                            )
+                        )
+                    ));
+                }
 
-        // 错误处理
-        function showError(message, isWarning = false) {
-            const container = document.getElementById('error-container');
-            container.innerHTML = `
-                <div class="error-box" style="${isWarning ? 'background:#fff3d6;color:#73510d' : ''}">
-                    ${message}
-                    <button onclick="window.location.reload()" style="margin-top:10px;padding:6px 12px;background:${isWarning ? '#f9c510' : '#d73a49'};color:white;border:none;border-radius:4px;">
-                        重试
-                    </button>
-                </div>
-            `;
+                if (data.replace?.length) {
+                    fragment.appendChild(this._buildSection(
+                        '🔄 文件替换',
+                        data.replace.map(file => 
+                            this._buildFileItem(
+                                `config/${file.oldName} → ${file.newUrl.split('/').pop()}`,
+                                file.newUrl,
+                                'replace'
+                            )
+                        )
+                    ));
+                }
+
+                this.fileList.appendChild(fragment);
+            }
+
+            static _buildSection(title, items) {
+                const section = document.createElement('div');
+                section.className = 'card';
+                section.innerHTML = `
+                    <h2 style="margin: 0 0 1rem 0">${title}</h2>
+                    ${items.join('')}
+                `;
+                return section;
+            }
+
+            static _buildFileItem(pathText, url, type) {
+                const item = document.createElement('div');
+                item.className = 'file-item';
+                item.innerHTML = `
+                    <div class="path-display">${this._sanitize(pathText)}</div>
+                    <a href="${this._sanitize(url)}" target="_blank" class="url">${this._getHostname(url)}</a>
+                    <div class="badge" style="${this._getBadgeStyle(type)}">
+                        ${this._getActionText(type)}
+                    </div>
+                `;
+                return item;
+            }
+
+            static _getHostname(url) {
+                try {
+                    return new URL(url).hostname;
+                } catch {
+                    return '无效链接';
+                }
+            }
+
+            static _getBadgeStyle(type) {
+                const colors = {
+                    delete: 'background: #ef4444; color: white',
+                    download: 'background: #3b82f6; color: white',
+                    replace: 'background: #10b981; color: white'
+                };
+                return colors[type] || '';
+            }
+
+            static _getActionText(type) {
+                return {
+                    delete: '删除',
+                    download: '下载',
+                    replace: '替换'
+                }[type] || '';
+            }
+
+            static _sanitize(text) {
+                return text.toString()
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+            }
+
+            static _clearLoading() {
+                this.loading.remove();
+            }
+
+            static _showError(error) {
+                this.fileList.innerHTML = `
+                    <div class="card" style="background: #fee2e2; color: #dc2626">
+                        <h3>⚠️ 加载失败</h3>
+                        <p>${this._sanitize(error.message)}</p>
+                        <button onclick="window.location.reload()" 
+                            style="margin-top: 0.5rem;
+                                   padding: 0.5rem 1rem;
+                                   background: #dc2626;
+                                   color: white;
+                                   border: none;
+                                   border-radius: 0.375rem;">
+                            重试
+                        </button>
+                    </div>
+                `;
+            }
         }
 
         // 初始化
-        async function init() {
-            try {
-                const patchData = await fetchWithCache();
-                renderUI(patchData);
-            } catch (error) {
-                console.error('初始化失败:', error);
-                document.getElementById('loading').style.display = 'none';
-                showError(`数据加载失败: ${error.message}`);
-            }
-        }
-
-        // 启动应用
-        init();
+        window.addEventListener('DOMContentLoaded', () => {
+            Renderer.init();
+            Renderer.render();
+        });
     </script>
 </body>
 </html>

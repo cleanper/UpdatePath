@@ -174,6 +174,13 @@
             text-decoration: underline;
         }
         
+        .replacement-text {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 5px;
+        }
+        
         @media (max-width: 768px) {
             .version-header {
                 flex-direction: column;
@@ -193,6 +200,11 @@
                 margin-left: 0;
                 margin-top: 8px;
             }
+            
+            .replacement-text {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
@@ -211,26 +223,69 @@
     <script>
         // 配置
         const jsonUrl = 'https://raw.githubusercontent.com/cleanper/UpdatePath/main/updates.json';
+        let cacheData = null;
+        let lastFetchTime = 0;
+        const CACHE_DURATION = 5 * 60 * 1000; // 5分钟缓存
         
         // 获取并显示更新数据
         async function loadUpdateData() {
             try {
-                const response = await fetch(jsonUrl);
+                const now = Date.now();
+                
+                // 使用缓存数据如果可用且未过期
+                if (cacheData && (now - lastFetchTime) < CACHE_DURATION) {
+                    displayUpdateData(cacheData);
+                    return;
+                }
+                
+                // 添加时间戳防止缓存
+                const timestamp = new Date().getTime();
+                const response = await fetch(`${jsonUrl}?t=${timestamp}`);
+                
                 if (!response.ok) {
                     throw new Error('获取更新数据失败');
                 }
                 
                 const data = await response.json();
+                cacheData = data;
+                lastFetchTime = now;
+                
                 displayUpdateData(data);
             } catch (error) {
                 console.error('加载更新数据时出错:', error);
-                document.getElementById('modpack-name').textContent = '加载更新数据出错';
-                document.getElementById('versions-container').innerHTML = `
-                    <div class="version-card">
-                        <p>无法加载更新信息，请稍后再试。</p>
-                    </div>
-                `;
+                showError();
+                
+                // 如果缓存数据可用，显示缓存数据
+                if (cacheData) {
+                    displayUpdateData(cacheData);
+                    showCacheWarning();
+                }
             }
+        }
+        
+        function showError() {
+            document.getElementById('modpack-name').textContent = '加载更新数据出错';
+            document.getElementById('versions-container').innerHTML = `
+                <div class="version-card">
+                    <p>无法加载最新更新信息，正在显示缓存数据...</p>
+                </div>
+            `;
+        }
+        
+        function showCacheWarning() {
+            const warning = document.createElement('div');
+            warning.className = 'version-card';
+            warning.innerHTML = `
+                <p style="color: var(--warning-color);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    注意：当前显示的是缓存数据，可能不是最新版本
+                </p>
+            `;
+            document.getElementById('versions-container').prepend(warning);
         }
         
         function displayUpdateData(data) {
@@ -238,6 +293,7 @@
             document.getElementById('modpack-name').textContent = data.modpack_name;
             
             const versionsContainer = document.getElementById('versions-container');
+            versionsContainer.innerHTML = '';
             
             // 按版本号排序（新版本在前）
             const sortedVersions = [...data.versions].sort((a, b) => {
@@ -317,7 +373,10 @@
                                     ${version.replacements.map(file => `
                                         <li class="file-item">
                                             ${file.icon ? `<img src="${file.icon}" class="file-icon" alt="文件图标">` : ''}
-                                            <span>将 <strong>${file.original}</strong> 替换为 <strong>${file.replacement}</strong></span>
+                                            <div class="replacement-text">
+                                                <span>将 <strong>${file.original}</strong> 替换为 </span>
+                                                <a href="${file.replacement_url}" target="_blank"><strong>${file.replacement}</strong></a>
+                                            </div>
                                             <span class="file-destination">${file.destination}</span>
                                         </li>
                                     `).join('')}
@@ -350,6 +409,43 @@
         
         // 页面加载时获取数据
         document.addEventListener('DOMContentLoaded', loadUpdateData);
+        
+        // 添加刷新按钮功能
+        document.addEventListener('DOMContentLoaded', () => {
+            const header = document.querySelector('header');
+            const refreshBtn = document.createElement('button');
+            refreshBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 5px;">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                刷新数据
+            `;
+            refreshBtn.style.cssText = `
+                background: var(--primary-color);
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-family: inherit;
+                font-size: 0.9em;
+                margin-top: 10px;
+                display: inline-flex;
+                align-items: center;
+                transition: background 0.2s;
+            `;
+            refreshBtn.onmouseover = () => {
+                refreshBtn.style.background = var(--accent-color);
+            };
+            refreshBtn.onmouseout = () => {
+                refreshBtn.style.background = var(--primary-color);
+            };
+            refreshBtn.onclick = loadUpdateData;
+            
+            header.appendChild(refreshBtn);
+        });
     </script>
 </body>
 </html>

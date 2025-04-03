@@ -1,29 +1,20 @@
 {
     "download": {
-        "version": "1.2.0",
+        "version": "1.2.1",
         "additions": [
             {
                 "name": "jei-1.19.2.jar",
                 "url": "https://cdn.example.com/mods/jei-1.19.2.jar"
-            },
-            {
-                "name": "optifine_1.19.2.jar",
-                "url": "https://mirror.example.com/mods/optifine_1.19.2.jar"
             }
         ],
         "deletions": [
-            "old_mod.jar",
-            "deprecated_config.cfg"
+            "old_mod.jar"
         ]
     },
     "replace": [
         {
             "oldName": "config.yml",
-            "newUrl": "https://cdn.example.com/configs/v3-config.yml"
-        },
-        {
-            "oldName": "settings.cfg",
-            "newUrl": "https://mirror.example.com/configs/new_settings.cfg"
+            "newUrl": "https://cdn.example.com/configs/v4-config.yml"
         }
     ]
 }

@@ -1,32 +1,18 @@
 {
-  "modpack_name": "我的整合包名称",
+  "modpack_name": "CS",
   "versions": [
     {
-      "version": "1.0.7",
-      "release_date": "2023-11-15",
-      "title": "性能优化大更新",
-      "description": "本次更新主要优化了游戏性能并修复了关键错误。",
-      "downloads": [
-        {
-          "url": "https://github.com/你的用户名/你的仓库/raw/main/mods/performancemod.jar",
-          "filename": "performancemod.jar",
-          "destination": "mods",
-          "icon": "https://github.com/你的用户名/你的仓库/raw/main/icons/performance.png"
-        }
-      ],
-      "deletions": [
-        {
-          "filename": "oldmod.jar",
-          "destination": "mods"
-        }
-      ],
+      "version": "1.0.1",
+      "release_date": "2025-4-3",
+      "title": "模组更新",
+      "description": "更新模组",
       "replacements": [
         {
-          "original": "oldtexturepack.zip",
-          "replacement": "newtexturepack.zip",
-          "url": "https://github.com/你的用户名/你的仓库/raw/main/resourcepacks/newtexturepack.zip",
-          "destination": "resourcepacks",
-          "icon": "https://github.com/你的用户名/你的仓库/raw/main/icons/texture.png"
+          "original": "fabric-api-0.92.3+1.20.1.jar",
+          "replacement": "fabric-api-0.92.5+1.20.1.jar",
+          "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/PB9Kjpo3/fabric-api-0.92.5%2B1.20.1.jar",
+          "destination": "mods",
+          "icon": "https://cdn.modrinth.com/data/P7dR8mSH/icon.png"
         }
       ]
     }

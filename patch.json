@@ -1,27 +1,29 @@
 {
-    "delete": ["file1.txt", "file2.txt"],
     "download": {
-        "version": "1.0.7",
+        "version": "1.2.0",
         "additions": [
             {
-                "name": "new_file1.zip",
-                "url": "https://github.com/yourusername/your-repo/raw/main/new_file1.zip"
+                "name": "jei-1.19.2.jar",
+                "url": "https://cdn.example.com/mods/jei-1.19.2.jar"
             },
             {
-                "name": "new_file2.zip",
-                "url": "https://github.com/yourusername/your-repo/raw/main/new_file2.zip"
+                "name": "optifine_1.19.2.jar",
+                "url": "https://mirror.example.com/mods/optifine_1.19.2.jar"
             }
         ],
-        "deletions": ["file1.txt", "file2.txt"]
+        "deletions": [
+            "old_mod.jar",
+            "deprecated_config.cfg"
+        ]
     },
     "replace": [
         {
-            "oldName": "old_file1.txt",
-            "newUrl": "https://github.com/yourusername/your-repo/raw/main/new_file1.txt"
+            "oldName": "config.yml",
+            "newUrl": "https://cdn.example.com/configs/v3-config.yml"
         },
         {
-            "oldName": "old_file2.txt",
-            "newUrl": "https://github.com/yourusername/your-repo/raw/main/new_file2.txt"
+            "oldName": "settings.cfg",
+            "newUrl": "https://mirror.example.com/configs/new_settings.cfg"
         }
     ]
 }
